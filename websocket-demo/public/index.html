@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 演示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #connection-status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #message-form {
+            margin-bottom: 20px;
+        }
+        #message-input {
+            padding: 8px;
+            width: 70%;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #messages {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .welcome {
+            background-color: #e0f7fa;
+        }
+        .update {
+            background-color: #e8f5e9;
+        }
+        .echo {
+            background-color: #fff9c4;
+        }
+        #chart {
+            margin-top: 20px;
+            height: 200px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket 演示</h1>
+    
+    <div id="connection-status" class="disconnected">未连接</div>
+    
+    <div id="message-form">
+        <input type="text" id="message-input" placeholder="输入消息...">
+        <button id="send-button">发送</button>
+        <button id="toggle-connection">连接</button>
+    </div>
+    
+    <h2>消息记录</h2>
+    <div id="messages"></div>
+    
+    <h2>实时数据</h2>
+    <div id="chart"></div>
+    
+    <script>
+        const statusEl = document.getElementById('connection-status');
+        const messagesEl = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const toggleButton = document.getElementById('toggle-connection');
+        const chartEl = document.getElementById('chart');
+        
+        let ws = null;
+        let chartData = [];
+        const maxDataPoints = 10;
+        
+        // 连接WebSocket
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                statusEl.textContent = '已连接';
+                statusEl.className = 'connected';
+                toggleButton.textContent = '断开';
+                addMessage('系统', '已连接到服务器');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // 根据消息类型处理
+                    switch(data.type) {
+                        case 'welcome':
+                            addMessage('服务器', data.message, 'welcome');
+                            break;
+                        case 'update':
+                            addMessage('数据更新', `时间: ${data.time}, 值: ${data.value}`, 'update');
+                            updateChart(data.time, data.value);
+                            break;
+                        case 'echo':
+                            addMessage('回显', `消息: ${data.message}，接收时间: ${data.received}`, 'echo');
+                            break;
+                        default:
+                            addMessage('未知', JSON.stringify(data));
+                    }
+                } catch (e) {
+                    addMessage('错误', '无法解析收到的消息');
+                }
+            };
+            
+            ws.onclose = () => {
+                statusEl.textContent = '已断开连接';
+                statusEl.className = 'disconnected';
+                toggleButton.textContent = '连接';
+                addMessage('系统', '已断开与服务器的连接');
+            };
+            
+            ws.onerror = () => {
+                addMessage('错误', '发生连接错误');
+            };
+        }
+        
+        // 断开连接
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        // 添加消息到消息区域
+        function addMessage(sender, content, type = '') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+        
+        // 更新图表
+        function updateChart(time, value) {
+            chartData.push({ time, value });
+            if (chartData.length > maxDataPoints) {
+                chartData.shift();
+            }
+            
+            // 简单的图表绘制
+            const maxValue = Math.max(...chartData.map(d => d.value));
+            const chartHeight = chartEl.clientHeight - 30;
+            
+            chartEl.innerHTML = chartData.map(d => {
+                const height = (d.value / maxValue) * chartHeight;
+                return `<div style="display:inline-block; width:${100/maxDataPoints}%; height:${height}px; background-color:#4CAF50; margin-top:${chartHeight-height}px;"></div>`;
+            }).join('');
+        }
+        
+        // 发送消息
+        sendButton.addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = messageInput.value.trim();
+                if (message) {
+                    ws.send(JSON.stringify({ message }));
+                    addMessage('你', message);
+                    messageInput.value = '';
+                }
+            } else {
+                addMessage('系统', '未连接到服务器，无法发送消息');
+            }
+        });
+        
+        // 按回车发送消息
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+        
+        // 切换连接状态
+        toggleButton.addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                disconnect();
+            } else {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html> 

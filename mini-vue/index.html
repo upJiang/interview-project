@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini-Vue 示例</title>
+  <style>
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    input {
+      padding: 8px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .output {
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mini-Vue 双向绑定示例</h1>
+    <div id="app"></div>
+  </div>
+
+  <script type="module">
+    import { reactive, ref, effect, createApp } from './src/index.js';
+
+    // 创建一个简单的应用
+    const App = {
+      setup() {
+        // 创建响应式数据
+        const message = ref('Hello Mini-Vue!');
+        const counter = ref(0);
+        const user = reactive({
+          name: '张三',
+          age: 25
+        });
+
+        // 数据变更函数
+        const updateMessage = (e) => {
+          message.value = e.target.value;
+        };
+
+        const incrementCounter = () => {
+          counter.value++;
+        };
+
+        const updateUserName = (e) => {
+          user.name = e.target.value;
+        };
+
+        const updateUserAge = (e) => {
+          user.age = parseInt(e.target.value) || 0;
+        };
+
+        return {
+          message,
+          counter,
+          user,
+          updateMessage,
+          incrementCounter,
+          updateUserName,
+          updateUserAge
+        };
+      },
+      render() {
+        const app = this.setup();
+        
+        // 创建DOM元素
+        const container = document.createElement('div');
+        
+        // 文本输入框
+        const messageInput = document.createElement('input');
+        messageInput.value = app.message.value;
+        messageInput.placeholder = '请输入消息';
+        messageInput.addEventListener('input', app.updateMessage);
+        
+        // 显示文本输入框的值
+        const messageOutput = document.createElement('div');
+        messageOutput.className = 'output';
+        messageOutput.textContent = app.message.value;
+        
+        // 计数器按钮
+        const counterButton = document.createElement('button');
+        counterButton.textContent = '点击增加计数';
+        counterButton.addEventListener('click', app.incrementCounter);
+        
+        // 计数器显示
+        const counterOutput = document.createElement('div');
+        counterOutput.className = 'output';
+        counterOutput.textContent = `计数器: ${app.counter.value}`;
+        
+        // 用户名输入
+        const userNameInput = document.createElement('input');
+        userNameInput.value = app.user.name;
+        userNameInput.placeholder = '请输入用户名';
+        userNameInput.addEventListener('input', app.updateUserName);
+        
+        // 用户年龄输入
+        const userAgeInput = document.createElement('input');
+        userAgeInput.value = app.user.age;
+        userAgeInput.type = 'number';
+        userAgeInput.placeholder = '请输入年龄';
+        userAgeInput.addEventListener('input', app.updateUserAge);
+        
+        // 用户信息显示
+        const userOutput = document.createElement('div');
+        userOutput.className = 'output';
+        userOutput.textContent = `用户信息: ${app.user.name}, ${app.user.age}岁`;
+        
+        // 添加到容器
+        container.appendChild(document.createElement('h2')).textContent = '文本绑定示例:';
+        container.appendChild(messageInput);
+        container.appendChild(messageOutput);
+        
+        container.appendChild(document.createElement('h2')).textContent = '计数器示例:';
+        container.appendChild(counterButton);
+        container.appendChild(counterOutput);
+        
+        container.appendChild(document.createElement('h2')).textContent = '用户信息示例:';
+        container.appendChild(userNameInput);
+        container.appendChild(userAgeInput);
+        container.appendChild(userOutput);
+        
+        // 设置effect监听数据变化
+        effect(() => {
+          messageOutput.textContent = app.message.value;
+        });
+        
+        effect(() => {
+          counterOutput.textContent = `计数器: ${app.counter.value}`;
+        });
+        
+        effect(() => {
+          userOutput.textContent = `用户信息: ${app.user.name}, ${app.user.age}岁`;
+        });
+        
+        return container;
+      }
+    };
+
+    // 创建应用并挂载
+    createApp(App).mount('#app');
+  </script>
+</body>
+</html> 

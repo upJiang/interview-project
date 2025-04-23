@@ -1,0 +1,21 @@
+{
+  "name": "mini-vue",
+  "version": "1.0.0",
+  "description": "一个简单的Vue3响应式系统实现",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx http-server -o"
+  },
+  "keywords": [
+    "vue",
+    "reactivity",
+    "proxy",
+    "effect"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+} 

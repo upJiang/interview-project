@@ -1,0 +1,13 @@
+{
+  "name": "websocket-demo",
+  "version": "1.0.0",
+  "description": "A simple WebSocket demo",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0"
+  }
+} 

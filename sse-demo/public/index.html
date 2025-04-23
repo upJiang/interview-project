@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE 演示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #connection-status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #message-form {
+            margin-bottom: 20px;
+        }
+        #message-input {
+            padding: 8px;
+            width: 70%;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #messages {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .welcome {
+            background-color: #e0f7fa;
+        }
+        .update {
+            background-color: #e8f5e9;
+        }
+        .user-message {
+            background-color: #fff9c4;
+        }
+        #chart {
+            margin-top: 20px;
+            height: 200px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>SSE 演示</h1>
+    
+    <div id="connection-status" class="disconnected">未连接</div>
+    
+    <div id="message-form">
+        <input type="text" id="message-input" placeholder="输入消息...">
+        <button id="send-button">发送</button>
+        <button id="toggle-connection">连接</button>
+    </div>
+    
+    <h2>消息记录</h2>
+    <div id="messages"></div>
+    
+    <h2>实时数据</h2>
+    <div id="chart"></div>
+    
+    <script>
+        const statusEl = document.getElementById('connection-status');
+        const messagesEl = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const toggleButton = document.getElementById('toggle-connection');
+        const chartEl = document.getElementById('chart');
+        
+        let eventSource = null;
+        let chartData = [];
+        const maxDataPoints = 10;
+        
+        // 连接到SSE服务器
+        function connect() {
+            eventSource = new EventSource('/events');
+            
+            eventSource.onopen = () => {
+                statusEl.textContent = '已连接';
+                statusEl.className = 'connected';
+                toggleButton.textContent = '断开';
+                addMessage('系统', '已连接到服务器');
+            };
+            
+            // 监听welcome事件
+            eventSource.addEventListener('welcome', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage('服务器', data.message, 'welcome');
+                } catch (e) {
+                    addMessage('错误', '无法解析欢迎消息');
+                }
+            });
+            
+            // 监听update事件
+            eventSource.addEventListener('update', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage('数据更新', `时间: ${data.time}, 值: ${data.value}`, 'update');
+                    updateChart(data.time, data.value);
+                } catch (e) {
+                    addMessage('错误', '无法解析更新消息');
+                }
+            });
+            
+            // 监听消息事件
+            eventSource.addEventListener('message', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage('收到消息', `${data.message} (${data.time})`, 'user-message');
+                } catch (e) {
+                    addMessage('错误', '无法解析消息');
+                }
+            });
+            
+            // 监听错误
+            eventSource.onerror = () => {
+                statusEl.textContent = '连接错误';
+                statusEl.className = 'disconnected';
+                addMessage('错误', '连接发生错误');
+                disconnect();
+            };
+        }
+        
+        // 断开SSE连接
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                statusEl.textContent = '已断开连接';
+                statusEl.className = 'disconnected';
+                toggleButton.textContent = '连接';
+                addMessage('系统', '已断开与服务器的连接');
+            }
+        }
+        
+        // 添加消息到消息区域
+        function addMessage(sender, content, type = '') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+        
+        // 更新图表
+        function updateChart(time, value) {
+            chartData.push({ time, value });
+            if (chartData.length > maxDataPoints) {
+                chartData.shift();
+            }
+            
+            // 简单的图表绘制
+            const maxValue = Math.max(...chartData.map(d => d.value));
+            const chartHeight = chartEl.clientHeight - 30;
+            
+            chartEl.innerHTML = chartData.map(d => {
+                const height = (d.value / maxValue) * chartHeight;
+                return `<div style="display:inline-block; width:${100/maxDataPoints}%; height:${height}px; background-color:#4CAF50; margin-top:${chartHeight-height}px;"></div>`;
+            }).join('');
+        }
+        
+        // 发送消息
+        sendButton.addEventListener('click', async () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                try {
+                    const response = await fetch(`/send-message?message=${encodeURIComponent(message)}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        addMessage('你', message);
+                        messageInput.value = '';
+                    } else {
+                        addMessage('错误', '发送失败');
+                    }
+                } catch (e) {
+                    addMessage('错误', '发送请求发生错误');
+                }
+            }
+        });
+        
+        // 按回车发送消息
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+        
+        // 切换连接状态
+        toggleButton.addEventListener('click', () => {
+            if (eventSource) {
+                disconnect();
+            } else {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html> 
