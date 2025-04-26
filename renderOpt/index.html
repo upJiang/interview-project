@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- DNS预解析和连接预建立 -->
+  <link rel="dns-prefetch" href="//cdn.example.com">
+  <link rel="preconnect" href="//cdn.example.com" crossorigin>
+  <link rel="dns-prefetch" href="//api.example.com">
+  <link rel="preconnect" href="//api.example.com" crossorigin>
+  <link rel="dns-prefetch" href="//img.example.com">
+  <link rel="preconnect" href="//img.example.com" crossorigin>
+  <link rel="dns-prefetch" href="//fonts.googleapis.com">
+  <link rel="preconnect" href="//fonts.googleapis.com" crossorigin>
+  
+  <!-- 预加载关键资源 -->
+  <link rel="preload" href="styles/main.css" as="style">
+  <link rel="preload" href="scripts/critical.js" as="script">
+  <link rel="preload" href="fonts/icon-font.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- 预加载首屏Banner图片 -->
+  <link rel="preload" href="images/banner-placeholder.jpg" as="image" fetchpriority="high">
+  
+  <!-- 使用HTTP2服务器推送，通过头部标识 -->
+  <!-- Link: </styles/main.css>; rel=preload; as=style -->
+  
+  <title>极速商城 - 首屏渲染优化示例</title>
+  
+  <!-- 内联关键CSS，避免阻塞渲染 -->
+  <style>
+    /* 关键渲染路径CSS */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #333;
+      background-color: #f8f8f8;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+    
+    .header {
+      background-color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #e53935;
+    }
+    
+    /* 骨架屏CSS */
+    .skeleton-box {
+      display: inline-block;
+      height: 1em;
+      position: relative;
+      overflow: hidden;
+      background-color: #EAEAEA;
+      border-radius: 3px;
+    }
+    
+    .skeleton-box::after {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      transform: translateX(-100%);
+      background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.2) 20%,
+        rgba(255, 255, 255, 0.5) 60%,
+        rgba(255, 255, 255, 0)
+      );
+      animation: shimmer 2s infinite;
+      content: '';
+    }
+    
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+    
+    .skeleton-banner {
+      height: 300px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    
+    .skeleton-card {
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      padding: 15px;
+      min-height: 250px;
+    }
+    
+    .skeleton-image {
+      height: 180px;
+      margin-bottom: 10px;
+    }
+    
+    .skeleton-title {
+      width: 85%;
+      height: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .skeleton-price {
+      width: 40%;
+      height: 16px;
+    }
+    
+    /* 产品网格CSS */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .product-card {
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: transform 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeIn 0.5s forwards;
+    }
+    
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .product-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .product-image {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      background-color: #f5f5f5;
+      overflow: hidden;
+    }
+    
+    .product-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+    
+    .product-card:hover .product-image img {
+      transform: scale(1.05);
+    }
+    
+    .product-info {
+      padding: 15px;
+    }
+    
+    .product-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .product-price {
+      font-size: 18px;
+      font-weight: bold;
+      color: #e53935;
+    }
+    
+    .banner {
+      width: 100%;
+      max-height: 350px;
+      overflow: hidden;
+      margin-bottom: 30px;
+      position: relative;
+    }
+    
+    .banner img {
+      width: 100%;
+      height: auto;
+    }
+    
+    /* 水平滚动的类别选择器 */
+    .categories {
+      display: flex;
+      overflow-x: auto;
+      padding: 15px 0;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE and Edge */
+      scroll-behavior: smooth;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: nowrap;
+    }
+    
+    .categories::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
+    
+    .category-item {
+      flex: 0 0 auto;
+      padding: 8px 15px;
+      background-color: #fff;
+      border-radius: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .category-item:hover, .category-item.active {
+      background-color: #e53935;
+      color: #fff;
+    }
+    
+    /* 懒加载占位符 */
+    .lazy-placeholder {
+      background-color: #eee;
+      width: 100%;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+    }
+    
+    /* 响应式样式 */
+    @media (max-width: 768px) {
+      .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .products-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  
+  <!-- 使用font-display策略优化字体加载 -->
+  <style>
+    @font-face {
+      font-family: 'CustomFont';
+      src: url('fonts/custom-font.woff2') format('woff2'),
+           url('fonts/custom-font.woff') format('woff');
+      font-display: swap; /* 使用swap策略, 先显示后备字体, 字体加载完成后替换 */
+      font-weight: normal;
+      font-style: normal;
+    }
+  </style>
+  
+  <!-- 非关键CSS异步加载 -->
+  <link rel="stylesheet" href="styles/main.css" media="print" onload="this.media='all'">
+  
+  <!-- 针对不同屏幕尺寸的图片响应式加载 - picture元素 -->
+  <script>
+    // 检测WebP支持
+    const checkWebpSupport = async () => {
+      if (!self.createImageBitmap) return false;
+      
+      const webpData = 'data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=';
+      const blob = await fetch(webpData).then(r => r.blob());
+      
+      return createImageBitmap(blob).then(() => true, () => false);
+    };
+    
+    // 设置支持状态到HTML标签上
+    checkWebpSupport().then(supported => {
+      document.documentElement.classList.add(supported ? 'webp' : 'no-webp');
+    });
+  </script>
+</head>
+<body>
+  <!-- App Shell结构 - 应用的主要框架 -->
+  <header class="header">
+    <div class="container">
+      <div class="header-inner">
+        <div class="logo">极速商城</div>
+        <nav class="navbar">
+          <a href="#" class="nav-link">首页</a>
+          <a href="#" class="nav-link">分类</a>
+          <a href="#" class="nav-link">购物车</a>
+          <a href="#" class="nav-link">我的</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  
+  <main class="container">
+    <!-- 骨架屏 - 在内容加载前显示 -->
+    <div id="skeleton-screen">
+      <div class="skeleton-banner skeleton-box"></div>
+      <div class="categories">
+        <div class="category-item skeleton-box" style="width: 80px"></div>
+        <div class="category-item skeleton-box" style="width: 65px"></div>
+        <div class="category-item skeleton-box" style="width: 90px"></div>
+        <div class="category-item skeleton-box" style="width: 70px"></div>
+        <div class="category-item skeleton-box" style="width: 85px"></div>
+      </div>
+      <div class="products-grid">
+        <!-- 重复的骨架卡片 -->
+        <div class="skeleton-card">
+          <div class="skeleton-image skeleton-box"></div>
+          <div class="skeleton-title skeleton-box"></div>
+          <div class="skeleton-price skeleton-box"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-image skeleton-box"></div>
+          <div class="skeleton-title skeleton-box"></div>
+          <div class="skeleton-price skeleton-box"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-image skeleton-box"></div>
+          <div class="skeleton-title skeleton-box"></div>
+          <div class="skeleton-price skeleton-box"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-image skeleton-box"></div>
+          <div class="skeleton-title skeleton-box"></div>
+          <div class="skeleton-price skeleton-box"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 实际内容 - 初始隐藏 -->
+    <div id="content" style="display: none;">
+      <!-- 横幅 - 使用picture元素进行响应式图片 -->
+      <div class="banner">
+        <picture>
+          <!-- WebP格式 -->
+          <source 
+            srcset="
+              https://cdn.example.com/images/banner-small.webp 480w,
+              https://cdn.example.com/images/banner-medium.webp 768w,
+              https://cdn.example.com/images/banner-large.webp 1200w
+            "
+            sizes="(max-width: 480px) 440px, (max-width: 768px) 728px, 1160px"
+            type="image/webp">
+          <!-- 回退到JPG -->
+          <source 
+            srcset="
+              https://cdn.example.com/images/banner-small.jpg 480w,
+              https://cdn.example.com/images/banner-medium.jpg 768w,
+              https://cdn.example.com/images/banner-large.jpg 1200w
+            "
+            sizes="(max-width: 480px) 440px, (max-width: 768px) 728px, 1160px"
+            type="image/jpeg">
+          <!-- 默认图片 -->
+          <img 
+            src="images/banner-placeholder.jpg" 
+            data-src="https://cdn.example.com/images/banner-large.jpg"
+            alt="夏季新品促销" 
+            width="1200" 
+            height="350"
+            loading="eager" 
+            fetchpriority="high">
+        </picture>
+      </div>
+      
+      <!-- 分类选择器 - 水平滚动 -->
+      <div class="categories">
+        <div class="category-item active">全部商品</div>
+        <div class="category-item">手机数码</div>
+        <div class="category-item">家用电器</div>
+        <div class="category-item">电脑办公</div>
+        <div class="category-item">服装鞋包</div>
+        <div class="category-item">食品生鲜</div>
+        <div class="category-item">美妆护肤</div>
+        <div class="category-item">家居厨具</div>
+      </div>
+      
+      <!-- 产品网格 - 使用Intersection Observer实现懒加载 -->
+      <div class="products-grid" id="products-container">
+        <!-- 产品将通过JavaScript动态加载 -->
+      </div>
+      
+      <!-- 加载更多指示器 -->
+      <div id="loading-indicator" style="text-align: center; padding: 20px; display: none;">
+        <div class="spinner"></div>
+        <p>加载更多商品...</p>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2023 极速商城 - 首屏渲染优化示例</p>
+    </div>
+  </footer>
+  
+  <!-- 内联关键JavaScript -->
+  <script>
+    // 使用sessionStorage缓存初次API请求
+    const fetchWithCache = async (url, options = {}) => {
+      const cacheKey = `cache_${url}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        return data;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
+      }
+    };
+    
+    // 初始化函数
+    const initApp = async () => {
+      try {
+        // 使用批量接口获取多种数据（接口合并）
+        const data = await fetchWithCache('data/initial-data.json');
+        renderContent(data);
+        
+        // 隐藏骨架屏，显示内容
+        document.getElementById('skeleton-screen').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        
+        // 设置懒加载观察器
+        setupLazyLoading();
+        
+        // 设置滚动加载更多
+        setupInfiniteScroll();
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+      }
+    };
+    
+    // 渲染内容
+    const renderContent = (data) => {
+      // 渲染产品
+      renderProducts(data.products);
+    };
+    
+    // 渲染产品
+    const renderProducts = (products) => {
+      const container = document.getElementById('products-container');
+      
+      products.forEach((product, index) => {
+        // 创建产品卡片 - 加载延迟增加流畅感
+        setTimeout(() => {
+          const card = createProductCard(product);
+          container.appendChild(card);
+        }, index * 50); // 每个卡片延迟50ms显示
+      });
+    };
+    
+    // 创建产品卡片
+    const createProductCard = (product) => {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      
+      // 构造产品图片路径
+      const imgSrc = product.image;
+      const webpSrc = imgSrc.replace('.jpg', '.webp');
+      
+      card.innerHTML = `
+        <div class="product-image">
+          <picture>
+            <source 
+              data-srcset="${webpSrc}" 
+              type="image/webp">
+            <img 
+              class="lazy" 
+              src="images/placeholder.jpg" 
+              data-src="${imgSrc}" 
+              alt="${product.name}" 
+              width="280" 
+              height="200"
+              loading="lazy">
+          </picture>
+        </div>
+        <div class="product-info">
+          <h3 class="product-title">${product.name}</h3>
+          <div class="product-price">¥${product.price.toFixed(2)}</div>
+        </div>
+      `;
+      
+      return card;
+    };
+    
+    // 设置懒加载观察器
+    const setupLazyLoading = () => {
+      if ('IntersectionObserver' in window) {
+        const lazyImageObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const lazyImage = entry.target;
+              
+              // 处理普通图片懒加载
+              if (lazyImage.dataset.src) {
+                lazyImage.src = lazyImage.dataset.src;
+                lazyImage.removeAttribute('data-src');
+              }
+              
+              // 处理srcset懒加载
+              if (lazyImage.dataset.srcset) {
+                lazyImage.srcset = lazyImage.dataset.srcset;
+                lazyImage.removeAttribute('data-srcset');
+              }
+              
+              lazyImage.classList.remove('lazy');
+              observer.unobserve(lazyImage);
+            }
+          });
+        });
+        
+        // 观察所有懒加载图片
+        const lazyImages = document.querySelectorAll('img.lazy');
+        lazyImages.forEach(img => {
+          lazyImageObserver.observe(img);
+        });
+        
+        // 观察sources
+        const lazySources = document.querySelectorAll('source[data-srcset]');
+        lazySources.forEach(source => {
+          lazyImageObserver.observe(source);
+        });
+      } else {
+        // 回退方案：简单的滚动监听
+        const lazyLoad = () => {
+          const lazyImages = document.querySelectorAll('img.lazy');
+          
+          lazyImages.forEach(img => {
+            if (img.getBoundingClientRect().top <= window.innerHeight) {
+              img.src = img.dataset.src;
+              img.classList.remove('lazy');
+            }
+          });
+          
+          if (lazyImages.length === 0) {
+            document.removeEventListener('scroll', lazyLoad);
+            window.removeEventListener('resize', lazyLoad);
+            window.removeEventListener('orientationchange', lazyLoad);
+          }
+        };
+        
+        document.addEventListener('scroll', lazyLoad);
+        window.addEventListener('resize', lazyLoad);
+        window.addEventListener('orientationchange', lazyLoad);
+      }
+    };
+    
+    // 设置无限滚动加载
+    const setupInfiniteScroll = () => {
+      let page = 1;
+      let loading = false;
+      
+      const loadMoreObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        
+        if (entry.isIntersecting && !loading) {
+          loadMoreProducts(++page);
+        }
+      });
+      
+      // 观察加载更多指示器
+      const indicator = document.getElementById('loading-indicator');
+      loadMoreObserver.observe(indicator);
+      
+      const loadMoreProducts = async (page) => {
+        loading = true;
+        indicator.style.display = 'block';
+        
+        try {
+          // 模拟网络延迟
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // 加载更多产品
+          const data = await fetchWithCache(`data/products-page-${page}.json`);
+          
+          if (data.products && data.products.length > 0) {
+            renderProducts(data.products);
+          } else {
+            // 没有更多产品，停止观察
+            loadMoreObserver.unobserve(indicator);
+            indicator.textContent = '没有更多商品了';
+          }
+        } catch (error) {
+          console.error('Failed to load more products:', error);
+        } finally {
+          loading = false;
+          indicator.style.display = 'none';
+        }
+      };
+    };
+    
+    // 使用requestIdleCallback优化初始化时机
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        initApp();
+      });
+    } else {
+      // 回退方案
+      setTimeout(() => {
+        initApp();
+      }, 1);
+    }
+    
+    // 使用Service Worker进行资源缓存（如果浏览器支持）
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed: ', err));
+      });
+    }
+  </script>
+  
+  <!-- 使用defer加载非关键脚本 -->
+  <script src="scripts/main.js" defer></script>
+  
+  <!-- 高级骨架屏生成器 - 提供更灵活的骨架屏实现 -->
+  <script src="scripts/skeleton-generator.js" defer></script>
+  
+  <!-- 字体优化脚本 - 控制字体加载策略 -->
+  <script src="scripts/font-optimize.js" defer></script>
+  
+  <!-- API预取脚本 - 提前加载关键API数据 -->
+  <script src="scripts/api-prefetch.js" defer></script>
+  
+  <!-- 高级图片懒加载 - 提供更多图片加载优化选项 -->
+  <script src="scripts/image-lazy-loading.js" defer></script>
+  
+  <!-- 监控性能指标和用户体验 - 使用Performance API -->
+  <script>
+    // 记录关键性能指标
+    const reportPerformance = () => {
+      if ('performance' in window) {
+        // 等待所有关键资源加载完成
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            const perfData = performance.timing;
+            const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+            const domReadyTime = perfData.domComplete - perfData.domLoading;
+            
+            console.log('页面加载时间: ', pageLoadTime + 'ms');
+            console.log('DOM渲染时间: ', domReadyTime + 'ms');
+            
+            // 这里可以将性能数据发送到服务器
+            // navigator.sendBeacon('/analytics', JSON.stringify({ pageLoadTime, domReadyTime }));
+          }, 0);
+        });
+        
+        // 检测长任务
+        if (PerformanceObserver) {
+          const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+              console.log('Long task detected: ', entry.duration + 'ms');
+            }
+          });
+          
+          observer.observe({entryTypes: ['longtask']});
+        }
+      }
+    };
+    
+    reportPerformance();
+    
+    // 初始化API预取功能
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.ApiPrefetcher) {
+        // 配置需要预取的API端点
+        const apiPrefetcher = new ApiPrefetcher({
+          endpoints: [
+            { 
+              url: 'data/initial-data.json',
+              method: 'GET',
+              key: 'initialData',
+              priority: 1,
+              maxAge: 60000 // 60秒缓存
+            },
+            { 
+              url: 'data/products-page-2.json',
+              method: 'GET',
+              key: 'nextPageProducts',
+              priority: 5,
+              maxAge: 60000 // 60秒缓存
+            }
+          ],
+          onComplete: (results) => {
+            console.log('预取完成, 数据已缓存');
+          }
+        });
+        
+        // 开始预取
+        apiPrefetcher.prefetch().catch(err => {
+          console.warn('API预取失败:', err);
+        });
+      }
+    });
+  </script>
+</body>
+</html> 

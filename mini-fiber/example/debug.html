@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Fiber Debug</title>
+</head>
+<body>
+  <h1>Mini Fiber Debug</h1>
+  <div id="debug-root"></div>
+  
+  <!-- 引入Mini-Fiber库 -->
+  <script>
+    // 声明全局MiniFiber对象
+    window.MiniFiber = {};
+    
+    // 添加调试日志
+    window.debugLog = function(message) {
+      console.log('[DEBUG]', message);
+    };
+  </script>
+  <script src="../src/Fiber.js"></script>
+  <script src="../src/createElement.js"></script>
+  <script src="../src/reconciler.js"></script>
+  <script src="../src/commit.js"></script>
+  <script src="../src/scheduler.js"></script>
+  <script src="../src/workLoop.js"></script>
+  <script src="../src/index.js"></script>
+  
+  <!-- 测试代码 -->
+  <script>
+    // 使用MiniFiber创建一个简单的元素
+    const element = MiniFiber.createElement(
+      'div',
+      { className: 'test' },
+      MiniFiber.createTextElement('Hello Mini Fiber!')
+    );
+    
+    // 尝试渲染
+    try {
+      MiniFiber.render(element, '#debug-root');
+      console.log('渲染成功!');
+    } catch (error) {
+      console.error('渲染失败:', error);
+    }
+  </script>
+</body>
+</html> 

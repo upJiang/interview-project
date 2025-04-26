@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SumFiber Demo - 精简版Fiber实现</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    button {
+      margin: 5px;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    .counter {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    h1, h2 {
+      color: #333;
+    }
+    
+    .value {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    
+    .explanation {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    
+    code {
+      background-color: #eee;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>SumFiber Demo - 精简版Fiber实现</h1>
+  
+  <div class="explanation">
+    <h2>什么是Fiber架构?</h2>
+    <p>
+      Fiber是React 16引入的新协调引擎，能将渲染工作分解为多个小任务，使React能够：
+    </p>
+    <ul>
+      <li><strong>中断渲染</strong>：可以暂停和恢复渲染工作，让出主线程</li>
+      <li><strong>任务优先级</strong>：高优先级任务可以打断低优先级任务</li>
+      <li><strong>增量渲染</strong>：将工作分散到多个帧</li>
+    </ul>
+    <p>
+      本页面使用一个500行左右的简化版Fiber实现，展示Fiber的核心工作原理。
+    </p>
+  </div>
+  
+  <div id="root"></div>
+  
+  <div class="explanation">
+    <h2>代码解释</h2>
+    <p>
+      <code>sum-fiber.js</code>包含以下核心部分：
+    </p>
+    <ol>
+      <li><strong>createElement</strong>：创建虚拟DOM元素</li>
+      <li><strong>Fiber结构</strong>：每个节点都是一个工作单元，形成链表结构</li>
+      <li><strong>工作循环</strong>：使用requestIdleCallback实现可中断的渲染</li>
+      <li><strong>协调过程</strong>：比较新旧树的差异，打上标记</li>
+      <li><strong>提交阶段</strong>：一次性将所有变更应用到DOM</li>
+    </ol>
+    <p>
+      查看控制台可以看到更多执行细节。
+    </p>
+  </div>
+  
+  <script src="sum-fiber.js"></script>
+  <script>
+    // 当前计数值
+    let count = 0;
+    
+    // 每次更新的间隔(毫秒)
+    const UPDATE_INTERVAL = 1000;
+    
+    /**
+     * 增加计数
+     */
+    function increment() {
+      count += 1;
+      renderApp();
+      console.log('计数增加，当前值:', count);
+    }
+    
+    /**
+     * 减少计数
+     */
+    function decrement() {
+      count -= 1;
+      renderApp();
+      console.log('计数减少，当前值:', count);
+    }
+    
+    /**
+     * 渲染应用
+     */
+    function renderApp() {
+      console.log('开始渲染，计数值:', count);
+      
+      // 创建应用元素树
+      const app = SumFiber.createElement(
+        'div',
+        { className: 'counter' },
+        SumFiber.createElement('h2', null, '简易计数器 (SumFiber实现)'),
+        SumFiber.createElement('div', { className: 'value' }, count.toString()),
+        SumFiber.createElement(
+          'div',
+          null,
+          SumFiber.createElement('button', { onClick: decrement }, '-'),
+          SumFiber.createElement('button', { onClick: increment }, '+')
+        )
+      );
+      
+      // 渲染到DOM
+      SumFiber.render(app, '#root');
+    }
+    
+    // 初始渲染
+    renderApp();
+    
+    // 设置自动更新
+    setInterval(() => {
+      // 自动递增
+      count += 1;
+      renderApp();
+      
+      console.log('自动更新，当前值:', count);
+    }, UPDATE_INTERVAL);
+  </script>
+</body>
+</html> 

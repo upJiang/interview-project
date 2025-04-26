@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Fiber Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    button {
+      margin: 5px;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    .counter {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .counter h2 {
+      margin-top: 0;
+    }
+    
+    .value {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mini Fiber Demo</h1>
+  <p>
+    这是一个简单的Mini Fiber演示应用，展示了我们实现的简化版Fiber架构的工作原理。
+    下面的计数器应用会每秒自动增加，你也可以手动点击按钮增加或减少计数。
+  </p>
+  
+  <div id="root"></div>
+  
+  <script>
+    // 声明全局MiniFiber对象
+    window.MiniFiber = {};
+  </script>
+  <script src="../src/Fiber.js"></script>
+  <script src="../src/createElement.js"></script>
+  <script src="../src/reconciler.js"></script>
+  <script src="../src/commit.js"></script>
+  <script src="../src/scheduler.js"></script>
+  <script src="../src/workLoop.js"></script>
+  <script src="../src/index.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

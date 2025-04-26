@@ -1,0 +1,386 @@
+/**
+ * skeleton-screen.css
+ * 提供多种骨架屏效果，用于优化首屏加载体验
+ */
+
+/* 骨架屏基础样式 */
+.skeleton-element {
+  position: relative;
+  overflow: hidden;
+  background-color: #E5E7EA; /* 基础背景色 */
+  border-radius: 4px;
+}
+
+/* 闪光动画 - 从左到右扫过的光效 */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #E5E7EA;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.6) 50%, 
+    rgba(255, 255, 255, 0) 100%);
+  animation: shimmer 1.5s infinite;
+  transform: translateX(-100%);
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 脉动动画 - 亮度变化 */
+.skeleton-pulse {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* 骨架屏文本行 */
+.skeleton-text {
+  height: 18px;
+  margin-bottom: 12px;
+  border-radius: 2px;
+}
+
+/* 多行文本变宽 */
+.skeleton-text:last-child {
+  width: 80%;
+}
+
+.skeleton-text:last-child:nth-child(odd) {
+  width: 70%;
+}
+
+/* 骨架屏圆形，适用于头像等圆形图片 */
+.skeleton-circle {
+  border-radius: 50%;
+}
+
+/* 骨架屏矩形，适用于图片占位 */
+.skeleton-image {
+  width: 100%;
+  padding-top: 75%; /* 默认4:3比例 */
+  background-color: #E5E7EA;
+}
+
+/* 骨架屏卡片容器 */
+.skeleton-card {
+  padding: 16px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  margin-bottom: 16px;
+}
+
+/* 电商商品卡片骨架屏 */
+.skeleton-product-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-product-image {
+  width: 100%;
+  padding-top: 100%; /* 1:1比例 */
+}
+
+.skeleton-product-content {
+  padding: 12px;
+}
+
+.skeleton-product-title {
+  height: 20px;
+  margin-bottom: 12px;
+}
+
+.skeleton-product-description {
+  height: 16px;
+  margin-bottom: 8px;
+  width: 90%;
+}
+
+.skeleton-product-description:last-child {
+  width: 60%;
+  margin-bottom: 12px;
+}
+
+.skeleton-product-price {
+  height: 22px;
+  width: 40%;
+  margin-top: 8px;
+}
+
+/* 电商列表骨架屏 */
+.skeleton-product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* 轮播图骨架屏 */
+.skeleton-carousel {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+/* 电商搜索框骨架屏 */
+.skeleton-search {
+  height: 40px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+}
+
+/* 导航栏骨架屏 */
+.skeleton-navbar {
+  height: 48px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.skeleton-navbar-logo {
+  width: 100px;
+  height: 28px;
+  margin-right: auto;
+}
+
+.skeleton-navbar-item {
+  width: 40px;
+  height: 28px;
+  margin-left: 20px;
+}
+
+/* 标签切换骨架屏 */
+.skeleton-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.skeleton-tab-item {
+  min-width: 80px;
+  height: 32px;
+  margin-right: 24px;
+}
+
+/* 底部导航骨架屏 */
+.skeleton-bottom-navigation {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 56px;
+  border-top: 1px solid #eee;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+}
+
+.skeleton-bottom-navigation-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.skeleton-bottom-navigation-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-bottom: 4px;
+}
+
+.skeleton-bottom-navigation-text {
+  width: 40px;
+  height: 12px;
+}
+
+/* 渐变式骨架屏 */
+.skeleton-gradient {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: gradient-shift 2s infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+/* 暗黑模式支持 */
+@media (prefers-color-scheme: dark) {
+  .skeleton-element {
+    background-color: #333;
+  }
+  
+  .skeleton-shimmer {
+    background-color: #333;
+  }
+  
+  .skeleton-shimmer::after {
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0) 0%, 
+      rgba(255, 255, 255, 0.1) 50%, 
+      rgba(255, 255, 255, 0) 100%);
+  }
+  
+  .skeleton-card,
+  .skeleton-product-card,
+  .skeleton-bottom-navigation {
+    background-color: #1c1c1e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .skeleton-gradient {
+    background: linear-gradient(90deg, #333 25%, #3a3a3a 50%, #333 75%);
+  }
+  
+  .skeleton-tabs {
+    border-bottom-color: #333;
+  }
+  
+  .skeleton-bottom-navigation {
+    border-top-color: #333;
+  }
+}
+
+/* 响应式适配 */
+@media screen and (max-width: 768px) {
+  .skeleton-carousel {
+    height: 160px;
+  }
+  
+  .skeleton-product-list {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  
+  .skeleton-navbar {
+    height: 44px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .skeleton-carousel {
+    height: 120px;
+    border-radius: 4px;
+  }
+  
+  .skeleton-product-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  
+  .skeleton-card {
+    padding: 12px;
+  }
+  
+  .skeleton-product-content {
+    padding: 8px;
+  }
+}
+
+/* JavaScript控制 - 自动隐藏 */
+.skeleton-content-loaded {
+  animation: fadeOut 0.3s forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    display: none;
+  }
+}
+
+/* 骨架屏包装器 - 用于组合多个骨架屏元素 */
+.skeleton-wrapper {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+/* 详情页骨架屏 */
+.skeleton-detail {
+  width: 100%;
+}
+
+.skeleton-detail-header {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.skeleton-detail-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-right: 16px;
+}
+
+.skeleton-detail-info {
+  flex: 1;
+}
+
+.skeleton-detail-title {
+  height: 24px;
+  margin-bottom: 8px;
+}
+
+.skeleton-detail-subtitle {
+  height: 16px;
+  width: 60%;
+}
+
+.skeleton-detail-image {
+  width: 100%;
+  height: 300px;
+  margin: 20px 0;
+}
+
+.skeleton-detail-paragraph {
+  margin-bottom: 16px;
+}
+
+.skeleton-detail-paragraph-line {
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-detail-paragraph-line:last-child {
+  width: 70%;
+} 

@@ -1,0 +1,148 @@
+{
+  "banner": {
+    "image": "https://cdn.example.com/images/banner-large.jpg",
+    "link": "/promotion/summer",
+    "alt": "夏季新品促销"
+  },
+  "categories": [
+    { "id": "all", "name": "全部商品", "active": true },
+    { "id": "phone", "name": "手机数码", "active": false },
+    { "id": "appliance", "name": "家用电器", "active": false },
+    { "id": "computer", "name": "电脑办公", "active": false },
+    { "id": "fashion", "name": "服装鞋包", "active": false },
+    { "id": "food", "name": "食品生鲜", "active": false },
+    { "id": "beauty", "name": "美妆护肤", "active": false },
+    { "id": "home", "name": "家居厨具", "active": false }
+  ],
+  "products": [
+    {
+      "id": "p001",
+      "name": "高端智能手机",
+      "price": 4999.00,
+      "originalPrice": 5999.00,
+      "discount": 0.17,
+      "image": "https://cdn.example.com/images/products/phone1.jpg",
+      "category": "phone",
+      "rating": 4.8,
+      "reviewCount": 1209,
+      "stock": 156,
+      "tags": ["新品", "热销"],
+      "description": "全新一代智能手机，搭载高通骁龙处理器，6.7英寸超清屏幕，3200万像素四摄"
+    },
+    {
+      "id": "p002",
+      "name": "轻薄笔记本电脑",
+      "price": 6299.00,
+      "originalPrice": 6999.00,
+      "discount": 0.10,
+      "image": "https://cdn.example.com/images/products/laptop1.jpg",
+      "category": "computer",
+      "rating": 4.7,
+      "reviewCount": 876,
+      "stock": 98,
+      "tags": ["限时特惠"],
+      "description": "14英寸轻薄本，英特尔i7处理器，16GB内存，512GB固态硬盘，续航长达12小时"
+    },
+    {
+      "id": "p003",
+      "name": "智能冰箱",
+      "price": 3799.00,
+      "originalPrice": 4599.00,
+      "discount": 0.17,
+      "image": "https://cdn.example.com/images/products/fridge1.jpg",
+      "category": "appliance",
+      "rating": 4.5,
+      "reviewCount": 543,
+      "stock": 45,
+      "tags": ["节能"],
+      "description": "对开门智能冰箱，变频节能，智能控温，大容量保鲜，支持手机远程控制"
+    },
+    {
+      "id": "p004",
+      "name": "时尚休闲鞋",
+      "price": 299.00,
+      "originalPrice": 499.00,
+      "discount": 0.40,
+      "image": "https://cdn.example.com/images/products/shoes1.jpg",
+      "category": "fashion",
+      "rating": 4.6,
+      "reviewCount": 1432,
+      "stock": 345,
+      "tags": ["爆款"],
+      "description": "舒适透气，轻便耐磨，适合日常休闲与运动，多色可选"
+    },
+    {
+      "id": "p005",
+      "name": "进口坚果礼盒",
+      "price": 158.00,
+      "originalPrice": 198.00,
+      "discount": 0.20,
+      "image": "https://cdn.example.com/images/products/nuts1.jpg",
+      "category": "food",
+      "rating": 4.9,
+      "reviewCount": 2345,
+      "stock": 456,
+      "tags": ["爆款", "有机"],
+      "description": "精选全球优质坚果，混合装礼盒，原味烘焙，无添加剂，送礼佳品"
+    },
+    {
+      "id": "p006",
+      "name": "护肤精华套装",
+      "price": 459.00,
+      "originalPrice": 599.00,
+      "discount": 0.23,
+      "image": "https://cdn.example.com/images/products/skincare1.jpg",
+      "category": "beauty",
+      "rating": 4.7,
+      "reviewCount": 987,
+      "stock": 123,
+      "tags": ["热销", "限量"],
+      "description": "深层补水保湿，改善肤质，淡化细纹，适合各种肤质"
+    },
+    {
+      "id": "p007",
+      "name": "多功能料理机",
+      "price": 899.00,
+      "originalPrice": 1299.00,
+      "discount": 0.31,
+      "image": "https://cdn.example.com/images/products/kitchen1.jpg",
+      "category": "home",
+      "rating": 4.6,
+      "reviewCount": 654,
+      "stock": 87,
+      "tags": ["畅销"],
+      "description": "一机多用，搅拌切碎研磨蒸煮，智能预设模式，轻松做出各种美食"
+    },
+    {
+      "id": "p008",
+      "name": "智能手表",
+      "price": 1299.00,
+      "originalPrice": 1499.00,
+      "discount": 0.13,
+      "image": "https://cdn.example.com/images/products/watch1.jpg",
+      "category": "phone",
+      "rating": 4.5,
+      "reviewCount": 789,
+      "stock": 102,
+      "tags": ["新品"],
+      "description": "全面健康监测，智能通知提醒，长达14天续航，50米防水防尘"
+    }
+  ],
+  "user": {
+    "isLoggedIn": false,
+    "recentlyViewed": ["p001", "p004", "p007"],
+    "cart": {
+      "count": 0,
+      "items": []
+    },
+    "wishlist": {
+      "count": 0,
+      "items": []
+    }
+  },
+  "settings": {
+    "currency": "¥",
+    "shippingThreshold": 199,
+    "recommendationEnabled": true
+  }
+} 
