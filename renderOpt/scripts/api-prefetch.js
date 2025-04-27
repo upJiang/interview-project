@@ -1,6 +1,6 @@
 /**
  * api-prefetch.js
- * API预取模块，用于提前请求首屏关键数据
+ * API预取实现 - 提前获取可能需要的API数据，提升用户体验
  */
 
 class ApiPrefetcher {
@@ -22,517 +22,557 @@ class ApiPrefetcher {
    * @param {number} options.concurrency - 最大并发数，默认为3
    */
   constructor(options = {}) {
-    // 默认配置
     this.options = {
-      endpoints: [],
-      useCache: true,
-      cacheNamespace: 'api-prefetch',
-      debug: false,
-      onComplete: null,
-      onError: null,
-      concurrency: 3,
+      // 默认缓存时间（毫秒）
+      defaultCacheTime: 5 * 60 * 1000, // 5分钟
+      // 预取规则
+      rules: [],
+      // 缓存存储类型：memory, localStorage, sessionStorage
+      storageType: 'memory',
+      // 缓存键前缀
+      cacheKeyPrefix: 'api_prefetch_',
+      // 自动清理过期缓存的间隔（毫秒）
+      cleanupInterval: 10 * 60 * 1000, // 10分钟
+      // 是否在用户空闲时执行预取
+      useIdleCallback: true,
+      // 网络条件限制 - 仅在好的网络环境下预取
+      networkConditions: {
+        onlyWifi: false, // 是否只在WiFi环境下预取
+        minDownlink: 0.5, // 最小下行速度要求 (Mbps)
+      },
       ...options
     };
 
-    // 状态控制
-    this.status = {
-      isPrefetching: false,
-      prefetchedCount: 0,
-      failedCount: 0,
-      totalCount: this.options.endpoints.length
-    };
-
-    // 性能指标
-    this.metrics = {
-      startTime: 0,
-      endTime: 0,
-      responseTimesByEndpoint: {},
-      totalTime: 0,
-      cacheHits: 0
-    };
-
-    // 预取队列
-    this.queue = [...this.options.endpoints].sort((a, b) => 
-      (a.priority || 5) - (b.priority || 5)
-    );
-
-    // 活跃请求计数
-    this.activeRequests = 0;
-
     // 缓存存储
-    this.cacheStorage = this._initCache();
-
-    // 初始化
-    this._log('ApiPrefetcher 已初始化');
+    this.cache = {};
+    
+    // 当前正在预取的请求
+    this.pendingFetches = new Map();
+    
+    // 监听网络状态变化
+    this.setupNetworkListener();
+    
+    // 设置自动清理计时器
+    this.setupCacheCleanup();
+    
+    // 路由变化监听（SPA应用）
+    this.setupRouteChangeListener();
+    
+    console.log('[ApiPrefetcher] 已初始化');
   }
 
   /**
-   * 初始化缓存系统
-   * @returns {Object} 缓存控制器对象
-   * @private
+   * 设置网络状态监听器
    */
-  _initCache() {
-    // 检查是否支持SessionStorage
-    const isStorageAvailable = (function() {
-      try {
-        const storage = window.sessionStorage;
-        const testKey = '__storage_test__';
-        storage.setItem(testKey, testKey);
-        storage.removeItem(testKey);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    })();
-
-    // 内存缓存备选方案
-    const memoryCache = {
-      store: new Map(),
-      get(key) {
-        const item = this.store.get(key);
-        if (!item) return null;
-        
-        // 检查有效期
-        if (item.expiry && item.expiry < Date.now()) {
-          this.store.delete(key);
-          return null;
-        }
-        
-        return item.data;
-      },
-      set(key, value, maxAge) {
-        const item = {
-          data: value,
-          expiry: maxAge ? Date.now() + maxAge : null
-        };
-        this.store.set(key, item);
-      },
-      delete(key) {
-        this.store.delete(key);
-      },
-      clear() {
-        this.store.clear();
-      }
-    };
-
-    // 根据浏览器支持返回适当的缓存管理器
-    if (isStorageAvailable && this.options.useCache) {
-      return {
-        get: (key) => {
-          const cacheKey = `${this.options.cacheNamespace}:${key}`;
-          const cachedItem = sessionStorage.getItem(cacheKey);
-          
-          if (!cachedItem) return null;
-          
-          try {
-            const { data, expiry } = JSON.parse(cachedItem);
-            
-            // 检查有效期
-            if (expiry && expiry < Date.now()) {
-              sessionStorage.removeItem(cacheKey);
-              return null;
-            }
-            
-            return data;
-          } catch (e) {
-            this._log(`缓存解析错误: ${e.message}`, 'error');
-            sessionStorage.removeItem(cacheKey);
-            return null;
-          }
-        },
-        set: (key, value, maxAge) => {
-          const cacheKey = `${this.options.cacheNamespace}:${key}`;
-          const item = {
-            data: value,
-            expiry: maxAge ? Date.now() + maxAge : null
-          };
-          
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify(item));
-          } catch (e) {
-            this._log(`缓存存储错误: ${e.message}`, 'error');
-          }
-        },
-        delete: (key) => {
-          const cacheKey = `${this.options.cacheNamespace}:${key}`;
-          sessionStorage.removeItem(cacheKey);
-        },
-        clear: () => {
-          // 只清除当前命名空间的缓存
-          const keysToRemove = [];
-          
-          for (let i = 0; i < sessionStorage.length; i++) {
-            const key = sessionStorage.key(i);
-            if (key.startsWith(`${this.options.cacheNamespace}:`)) {
-              keysToRemove.push(key);
-            }
-          }
-          
-          keysToRemove.forEach(key => sessionStorage.removeItem(key));
-        }
-      };
-    } else {
-      return memoryCache;
+  setupNetworkListener() {
+    if ('connection' in navigator) {
+      navigator.connection.addEventListener('change', () => {
+        this.checkNetworkAndPrefetch();
+      });
     }
   }
 
   /**
-   * 开始预取数据
-   * @returns {Promise<Object>} 包含所有预取结果的对象
+   * 设置缓存清理定时器
    */
-  async prefetch() {
-    if (this.status.isPrefetching) {
-      this._log('预取操作已经在进行中', 'warn');
+  setupCacheCleanup() {
+    setInterval(() => {
+      this.cleanExpiredCache();
+    }, this.options.cleanupInterval);
+  }
+
+  /**
+   * 设置路由变化监听
+   * 支持常见的前端路由框架
+   */
+  setupRouteChangeListener() {
+    // 监听 history 变化 (针对基于 history 的路由如 React Router, Vue Router)
+    window.addEventListener('popstate', () => {
+      this.onRouteChange(window.location.pathname);
+    });
+    
+    // 重写 history.pushState 和 replaceState 方法
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    const self = this;
+    
+    history.pushState = function() {
+      originalPushState.apply(this, arguments);
+      self.onRouteChange(arguments[2]); // 路径通常是第三个参数
+    };
+    
+    history.replaceState = function() {
+      originalReplaceState.apply(this, arguments);
+      self.onRouteChange(arguments[2]);
+    };
+    
+    // 初始路由处理
+    setTimeout(() => {
+      this.onRouteChange(window.location.pathname);
+    }, 0);
+  }
+
+  /**
+   * 路由变化处理
+   * @param {string} path - 当前路径
+   */
+  onRouteChange(path) {
+    console.log(`[ApiPrefetcher] 路由变化: ${path}`);
+    // 基于当前路由触发相关预取
+    this.prefetchByRoute(path);
+  }
+
+  /**
+   * 基于路由规则进行预取
+   * @param {string} route - 当前路由路径
+   */
+  prefetchByRoute(route) {
+    if (!route) return;
+    
+    // 找到匹配当前路由的预取规则
+    const matchedRules = this.options.rules.filter(rule => {
+      if (rule.route instanceof RegExp) {
+        return rule.route.test(route);
+      } else if (typeof rule.route === 'string') {
+        return rule.route === route || 
+               route.startsWith(rule.route + '/') || 
+               rule.route === '*';
+      }
+      return false;
+    });
+    
+    if (matchedRules.length > 0) {
+      console.log(`[ApiPrefetcher] 找到 ${matchedRules.length} 条匹配路由 ${route} 的预取规则`);
+      
+      // 执行预取
+      for (const rule of matchedRules) {
+        this.prefetchByRule(rule);
+      }
+    }
+  }
+
+  /**
+   * 根据规则进行预取
+   * @param {Object} rule - 预取规则
+   */
+  prefetchByRule(rule) {
+    // 检查条件是否满足
+    if (rule.condition && !this.evaluateCondition(rule.condition)) {
+      console.log(`[ApiPrefetcher] 规则条件不满足，跳过: ${rule.id || rule.urls[0]}`);
       return;
     }
-
-    // 如果没有端点配置，直接返回
-    if (this.queue.length === 0) {
-      this._log('没有配置预取端点', 'warn');
-      return {};
+    
+    // 获取要预取的URL列表
+    const urls = Array.isArray(rule.urls) ? rule.urls : [rule.urls];
+    
+    // 优先级
+    const priority = rule.priority || 0;
+    
+    // 缓存时间
+    const cacheTime = rule.cacheTime || this.options.defaultCacheTime;
+    
+    // 确定是否使用空闲回调
+    const useIdle = rule.useIdleCallback !== undefined ? 
+      rule.useIdleCallback : this.options.useIdleCallback;
+      
+    // 预取所有URL
+    for (const urlConfig of urls) {
+      const url = typeof urlConfig === 'string' ? urlConfig : urlConfig.url;
+      const options = typeof urlConfig === 'object' ? urlConfig.options : {};
+      
+      // 检查网络条件
+      if (!this.isNetworkConditionGood()) {
+        console.log(`[ApiPrefetcher] 网络条件不佳，跳过预取: ${url}`);
+        continue;
+      }
+      
+      // 如果使用空闲回调且浏览器支持
+      if (useIdle && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(
+          () => this.fetchAndCache(url, options, cacheTime),
+          { timeout: 1000 + (1000 * (5 - Math.min(5, priority))) }
+        );
+      } else {
+        // 否则直接预取，但使用setTimeout根据优先级延迟
+        const delay = priority >= 5 ? 0 : (5 - priority) * 200;
+        setTimeout(() => {
+          this.fetchAndCache(url, options, cacheTime);
+        }, delay);
+      }
     }
+  }
 
-    this.status.isPrefetching = true;
-    this.metrics.startTime = Date.now();
+  /**
+   * 评估条件是否满足
+   * @param {Function|Object} condition - 条件函数或对象
+   * @returns {boolean} 是否满足条件
+   */
+  evaluateCondition(condition) {
+    if (typeof condition === 'function') {
+      try {
+        return condition();
+      } catch (e) {
+        console.error('[ApiPrefetcher] 条件评估错误:', e);
+        return false;
+      }
+    } else if (typeof condition === 'object') {
+      // 可以支持基于对象的简单条件配置
+      if (condition.cookieExists) {
+        return document.cookie.includes(condition.cookieExists);
+      }
+      if (condition.localStorageExists) {
+        return !!localStorage.getItem(condition.localStorageExists);
+      }
+      if (condition.queryParam) {
+        const params = new URLSearchParams(window.location.search);
+        return params.has(condition.queryParam.name) && 
+               (condition.queryParam.value === undefined || 
+                params.get(condition.queryParam.name) === condition.queryParam.value);
+      }
+    }
+    return true;
+  }
 
-    // 重置计数器
-    this.status.prefetchedCount = 0;
-    this.status.failedCount = 0;
-    this.activeRequests = 0;
+  /**
+   * 获取并缓存API数据
+   * @param {string} url - API URL
+   * @param {Object} options - fetch选项
+   * @param {number} cacheTime - 缓存时间（毫秒）
+   */
+  fetchAndCache(url, options = {}, cacheTime = null) {
+    // 检查缓存
+    const cachedData = this.getCache(url);
+    if (cachedData && cachedData.expires > Date.now()) {
+      console.log(`[ApiPrefetcher] 使用缓存数据: ${url}`);
+      return Promise.resolve(cachedData.data);
+    }
+    
+    // 检查是否已经有相同的请求在进行中
+    if (this.pendingFetches.has(url)) {
+      console.log(`[ApiPrefetcher] 已有相同请求进行中: ${url}`);
+      return this.pendingFetches.get(url);
+    }
+    
+    console.log(`[ApiPrefetcher] 预取API: ${url}`);
+    
+    // 执行预取请求
+    const fetchPromise = fetch(url, options)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API预取失败: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // 缓存响应数据
+        this.setCache(url, data, cacheTime || this.options.defaultCacheTime);
+        // 移除进行中请求记录
+        this.pendingFetches.delete(url);
+        return data;
+      })
+      .catch(error => {
+        console.error(`[ApiPrefetcher] 预取失败:`, error);
+        // 移除进行中请求记录
+        this.pendingFetches.delete(url);
+        throw error;
+      });
+    
+    // 记录进行中的请求
+    this.pendingFetches.set(url, fetchPromise);
+    
+    return fetchPromise;
+  }
 
-    this._log(`开始预取 ${this.queue.length} 个API数据源`);
-
-    // 存储所有预取结果
-    const results = {};
-
+  /**
+   * 获取缓存数据
+   * @param {string} key - 缓存键
+   * @returns {Object|null} 缓存数据或null
+   */
+  getCache(key) {
+    const cacheKey = this.options.cacheKeyPrefix + key;
+    
     try {
-      await this._processQueue(results);
-      
-      // 计算总时间
-      this.metrics.endTime = Date.now();
-      this.metrics.totalTime = this.metrics.endTime - this.metrics.startTime;
-      
-      // 记录性能指标
-      this._logPerformance();
-      
-      // 调用完成回调
-      if (typeof this.options.onComplete === 'function') {
-        this.options.onComplete(results);
+      switch (this.options.storageType) {
+        case 'localStorage':
+          const lsData = localStorage.getItem(cacheKey);
+          return lsData ? JSON.parse(lsData) : null;
+          
+        case 'sessionStorage':
+          const ssData = sessionStorage.getItem(cacheKey);
+          return ssData ? JSON.parse(ssData) : null;
+          
+        default: // memory
+          return this.cache[cacheKey];
       }
-      
-      this._log(`预取完成，成功: ${this.status.prefetchedCount}，失败: ${this.status.failedCount}`);
-      
-      return results;
-    } catch (error) {
-      this._log(`预取过程中发生错误: ${error.message}`, 'error');
-      
-      // 调用错误回调
-      if (typeof this.options.onError === 'function') {
-        this.options.onError(error);
-      }
-      
-      throw error;
-    } finally {
-      this.status.isPrefetching = false;
+    } catch (e) {
+      console.error('[ApiPrefetcher] 读取缓存错误:', e);
+      return null;
     }
   }
 
   /**
-   * 处理预取队列
-   * @param {Object} results - 用于存储结果的对象
-   * @returns {Promise<void>}
-   * @private
+   * 设置缓存数据
+   * @param {string} key - 缓存键
+   * @param {Object} data - 要缓存的数据
+   * @param {number} cacheTime - 缓存时间（毫秒）
    */
-  async _processQueue(results) {
-    return new Promise((resolve) => {
-      const processNext = () => {
-        // 如果队列为空且没有活跃请求，表示所有请求已完成
-        if (this.queue.length === 0 && this.activeRequests === 0) {
-          resolve();
-          return;
-        }
-
-        // 检查是否可以发起更多请求
-        while (this.queue.length > 0 && this.activeRequests < this.options.concurrency) {
-          const endpoint = this.queue.shift();
-          this.activeRequests++;
-
-          this._fetchEndpoint(endpoint)
-            .then(data => {
-              // 存储结果
-              if (endpoint.key) {
-                results[endpoint.key] = data;
-              }
-              this.status.prefetchedCount++;
-            })
-            .catch(error => {
-              this._log(`预取 ${endpoint.url} 失败: ${error.message}`, 'error');
-              this.status.failedCount++;
-              
-              // 如果提供了端点特定的错误处理函数，则调用
-              if (typeof endpoint.onError === 'function') {
-                endpoint.onError(error);
-              }
-            })
-            .finally(() => {
-              this.activeRequests--;
-              // 继续处理队列
-              processNext();
-            });
-        }
-      };
-
-      // 开始处理队列
-      processNext();
-    });
-  }
-
-  /**
-   * 获取单个端点数据
-   * @param {Object} endpoint - 端点配置
-   * @returns {Promise<any>} 获取的数据
-   * @private
-   */
-  async _fetchEndpoint(endpoint) {
-    const { 
-      url, 
-      method = 'GET', 
-      params = {}, 
-      headers = {}, 
-      key, 
-      maxAge,
-      responseType = 'json',
-      timeout = 10000
-    } = endpoint;
-
-    // 如果启用缓存，先尝试从缓存获取
-    if (this.options.useCache && key && maxAge) {
-      const cachedData = this.cacheStorage.get(key);
-      if (cachedData) {
-        this._log(`命中缓存: ${key}`);
-        this.metrics.cacheHits++;
-        return cachedData;
-      }
-    }
-
-    this._log(`预取: ${method} ${url}`);
-    const startTime = Date.now();
-
+  setCache(key, data, cacheTime) {
+    const cacheKey = this.options.cacheKeyPrefix + key;
+    const cacheData = {
+      data,
+      expires: Date.now() + cacheTime
+    };
+    
     try {
-      // 构建请求参数
-      const fetchOptions = {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        },
-        signal: AbortSignal.timeout(timeout) // 设置超时
-      };
-
-      // 如果是GET请求，将参数添加到URL
-      let fetchUrl = url;
-      if (method === 'GET' && Object.keys(params).length > 0) {
-        const queryParams = new URLSearchParams();
-        for (const [key, value] of Object.entries(params)) {
-          queryParams.append(key, value);
-        }
-        fetchUrl = `${url}${url.includes('?') ? '&' : '?'}${queryParams.toString()}`;
-      } else if (method !== 'GET' && Object.keys(params).length > 0) {
-        // 非GET请求，将参数放入请求体
-        fetchOptions.body = JSON.stringify(params);
-      }
-
-      // 发送请求
-      const response = await fetch(fetchUrl, fetchOptions);
-
-      // 检查响应状态
-      if (!response.ok) {
-        throw new Error(`HTTP错误: ${response.status}`);
-      }
-
-      // 根据responseType解析响应
-      let data;
-      switch (responseType) {
-        case 'json':
-          data = await response.json();
+      switch (this.options.storageType) {
+        case 'localStorage':
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
           break;
-        case 'text':
-          data = await response.text();
+          
+        case 'sessionStorage':
+          sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
           break;
-        case 'blob':
-          data = await response.blob();
+          
+        default: // memory
+          this.cache[cacheKey] = cacheData;
           break;
-        case 'arrayBuffer':
-          data = await response.arrayBuffer();
-          break;
-        default:
-          data = await response.json();
       }
-
-      // 计算响应时间
-      const responseTime = Date.now() - startTime;
-      this.metrics.responseTimesByEndpoint[key || url] = responseTime;
-
-      this._log(`预取成功: ${method} ${url} (${responseTime}ms)`);
-
-      // 如果启用缓存并指定了缓存键，则缓存数据
-      if (this.options.useCache && key && maxAge) {
-        this.cacheStorage.set(key, data, maxAge);
-        this._log(`缓存数据: ${key}, 过期时间: ${maxAge}ms`);
-      }
-
-      return data;
-    } catch (error) {
-      // 记录失败的请求
-      this._log(`预取失败: ${method} ${url} - ${error.message}`, 'error');
-      throw error;
+    } catch (e) {
+      console.error('[ApiPrefetcher] 写入缓存错误:', e);
     }
   }
 
   /**
-   * 获取已缓存的数据
-   * @param {string} key - 缓存键名
-   * @returns {*} 缓存的数据，如果不存在则返回null
+   * 清除过期缓存
    */
-  getCachedData(key) {
-    return this.cacheStorage.get(key);
+  cleanExpiredCache() {
+    const now = Date.now();
+    
+    // 内存缓存清理
+    if (this.options.storageType === 'memory') {
+      for (const key in this.cache) {
+        if (this.cache[key] && this.cache[key].expires < now) {
+          delete this.cache[key];
+        }
+      }
+      return;
+    }
+    
+    // 本地存储缓存清理
+    const storage = this.options.storageType === 'localStorage' ? 
+      localStorage : sessionStorage;
+    
+    const keysToRemove = [];
+    
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key && key.startsWith(this.options.cacheKeyPrefix)) {
+        try {
+          const cacheData = JSON.parse(storage.getItem(key));
+          if (cacheData && cacheData.expires < now) {
+            keysToRemove.push(key);
+          }
+        } catch (e) {
+          // 如果数据无效，也移除
+          keysToRemove.push(key);
+        }
+      }
+    }
+    
+    // 移除过期数据
+    keysToRemove.forEach(key => storage.removeItem(key));
+    
+    if (keysToRemove.length > 0) {
+      console.log(`[ApiPrefetcher] 已清理 ${keysToRemove.length} 条过期缓存`);
+    }
   }
 
   /**
-   * 手动设置缓存数据
-   * @param {string} key - 缓存键名
-   * @param {*} data - 要缓存的数据
-   * @param {number} maxAge - 数据最大缓存时间(毫秒)
+   * 检查网络条件是否适合预取
+   * @returns {boolean} 网络条件是否良好
    */
-  setCachedData(key, data, maxAge) {
-    this.cacheStorage.set(key, data, maxAge);
-    this._log(`手动设置缓存: ${key}, 过期时间: ${maxAge}ms`);
+  isNetworkConditionGood() {
+    if (!navigator.connection) {
+      return true; // 无法检测网络状态，假设良好
+    }
+    
+    const connection = navigator.connection;
+    
+    // 检查是否只在WiFi下预取
+    if (this.options.networkConditions.onlyWifi && 
+        connection.type !== 'wifi' && 
+        connection.effectiveType !== '4g') {
+      return false;
+    }
+    
+    // 检查下行速度
+    if (connection.downlink && 
+        connection.downlink < this.options.networkConditions.minDownlink) {
+      return false;
+    }
+    
+    // 检查数据保护模式
+    if (connection.saveData) {
+      return false;
+    }
+    
+    return true;
   }
 
   /**
-   * 清除指定键的缓存
-   * @param {string} key - 缓存键名
+   * 检查网络状态并基于当前条件执行预取
    */
-  clearCache(key) {
-    if (key) {
-      this.cacheStorage.delete(key);
-      this._log(`清除缓存: ${key}`);
+  checkNetworkAndPrefetch() {
+    if (this.isNetworkConditionGood()) {
+      console.log('[ApiPrefetcher] 网络条件良好，尝试预取');
+      this.prefetchByRoute(window.location.pathname);
     } else {
-      this.cacheStorage.clear();
-      this._log('清除所有缓存');
+      console.log('[ApiPrefetcher] 网络条件不佳，暂停预取');
     }
   }
 
   /**
-   * 添加新的预取端点
-   * @param {Object|Object[]} endpoints - 一个或多个端点配置
+   * 添加预取规则
+   * @param {Object} rule - 预取规则
    */
-  addEndpoints(endpoints) {
-    const newEndpoints = Array.isArray(endpoints) ? endpoints : [endpoints];
-    
-    // 按优先级排序后添加到队列
-    this.queue = [
-      ...this.queue,
-      ...newEndpoints
-    ].sort((a, b) => (a.priority || 5) - (b.priority || 5));
-    
-    // 更新总数
-    this.status.totalCount = this.queue.length;
-    
-    this._log(`添加了 ${newEndpoints.length} 个新的预取端点，当前队列长度: ${this.queue.length}`);
+  addRule(rule) {
+    this.options.rules.push(rule);
+    console.log(`[ApiPrefetcher] 添加预取规则: ${rule.id || rule.route}`);
+    return this;
   }
 
   /**
-   * 记录日志
-   * @param {string} message - 日志消息
-   * @param {string} level - 日志级别(log, warn, error)
-   * @private
+   * 移除预取规则
+   * @param {string} ruleId - 规则ID
    */
-  _log(message, level = 'log') {
-    if (!this.options.debug) return;
+  removeRule(ruleId) {
+    const initialLength = this.options.rules.length;
+    this.options.rules = this.options.rules.filter(rule => rule.id !== ruleId);
     
-    const prefix = '[API预取]';
-    
-    switch (level) {
-      case 'warn':
-        console.warn(`${prefix} ${message}`);
-        break;
-      case 'error':
-        console.error(`${prefix} ${message}`);
-        break;
-      default:
-        console.log(`${prefix} ${message}`);
+    if (initialLength !== this.options.rules.length) {
+      console.log(`[ApiPrefetcher] 已移除规则: ${ruleId}`);
     }
-  }
-
-  /**
-   * 记录性能指标
-   * @private
-   */
-  _logPerformance() {
-    if (!this.options.debug) return;
     
-    const avgResponseTime = Object.values(this.metrics.responseTimesByEndpoint).length > 0 
-      ? Object.values(this.metrics.responseTimesByEndpoint).reduce((sum, time) => sum + time, 0) / 
-        Object.values(this.metrics.responseTimesByEndpoint).length 
-      : 0;
+    return this;
+  }
+
+  /**
+   * 主动预取特定API
+   * @param {string} url - 要预取的URL
+   * @param {Object} options - fetch选项
+   * @param {number} cacheTime - 缓存时间
+   * @returns {Promise} 预取Promise
+   */
+  prefetch(url, options = {}, cacheTime = null) {
+    return this.fetchAndCache(url, options, cacheTime);
+  }
+
+  /**
+   * 删除指定URL的缓存
+   * @param {string} url - 要删除缓存的URL
+   */
+  invalidateCache(url) {
+    const cacheKey = this.options.cacheKeyPrefix + url;
     
-    console.log('[API预取性能指标]', {
-      总时间: `${this.metrics.totalTime}ms`,
-      平均响应时间: `${Math.round(avgResponseTime)}ms`,
-      成功率: `${Math.round((this.status.prefetchedCount / this.status.totalCount) * 100)}%`,
-      缓存命中数: this.metrics.cacheHits,
-      各接口响应时间: this.metrics.responseTimesByEndpoint
-    });
+    switch (this.options.storageType) {
+      case 'localStorage':
+        localStorage.removeItem(cacheKey);
+        break;
+      case 'sessionStorage':
+        sessionStorage.removeItem(cacheKey);
+        break;
+      default: // memory
+        delete this.cache[cacheKey];
+        break;
+    }
+    
+    console.log(`[ApiPrefetcher] 已清除缓存: ${url}`);
+    return this;
   }
 
   /**
-   * 获取当前状态
-   * @returns {Object} 当前状态对象
+   * 清除所有缓存
    */
-  getStatus() {
-    return {
-      ...this.status,
-      metrics: this.metrics
-    };
-  }
-
-  /**
-   * 重置预取器
-   */
-  reset() {
-    // 重置状态
-    this.status = {
-      isPrefetching: false,
-      prefetchedCount: 0,
-      failedCount: 0,
-      totalCount: this.options.endpoints.length
-    };
-
-    // 重置性能指标
-    this.metrics = {
-      startTime: 0,
-      endTime: 0,
-      responseTimesByEndpoint: {},
-      totalTime: 0,
-      cacheHits: 0
-    };
-
-    // 重置队列
-    this.queue = [...this.options.endpoints].sort((a, b) => 
-      (a.priority || 5) - (b.priority || 5)
-    );
-
-    // 重置活跃请求
-    this.activeRequests = 0;
-
-    this._log('预取器已重置');
+  clearAllCache() {
+    const prefix = this.options.cacheKeyPrefix;
+    
+    switch (this.options.storageType) {
+      case 'localStorage':
+      case 'sessionStorage':
+        const storage = this.options.storageType === 'localStorage' ? 
+          localStorage : sessionStorage;
+        
+        const keysToRemove = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && key.startsWith(prefix)) {
+            keysToRemove.push(key);
+          }
+        }
+        
+        keysToRemove.forEach(key => storage.removeItem(key));
+        break;
+        
+      default: // memory
+        this.cache = {};
+        break;
+    }
+    
+    console.log('[ApiPrefetcher] 已清除所有缓存');
+    return this;
   }
 }
 
-// 导出ApiPrefetcher类
+// 创建全局实例
+window.apiPrefetcher = new ApiPrefetcher({
+  useIdleCallback: true,
+  storageType: 'localStorage',
+  defaultCacheTime: 5 * 60 * 1000, // 5分钟
+  rules: [
+    // 首页预取规则
+    {
+      id: 'home-data',
+      route: '/',
+      priority: 5, // 高优先级
+      urls: ['/api/products/popular', '/api/categories']
+    },
+    // 产品页预取规则
+    {
+      id: 'product-detail',
+      route: /^\/product\/(\d+)$/,
+      // 相关产品推荐
+      priority: 3,
+      urls: [
+        // 预取评论
+        {
+          url: match => `/api/products/${match[1]}/reviews`,
+          options: { method: 'GET' }
+        },
+        // 预取相关产品
+        {
+          url: match => `/api/products/${match[1]}/related`,
+          options: { method: 'GET' }
+        }
+      ],
+      // 自定义条件：只有在用户已登录时才预取
+      condition: () => !!localStorage.getItem('user_token')
+    }
+  ]
+});
+
+// 导出
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ApiPrefetcher;
-} else {
-  window.ApiPrefetcher = ApiPrefetcher;
-} 
+}
+
+// 使用示例
+// window.apiPrefetcher.prefetch('/api/user/profile');
+
+// 添加多个路由的动态预取 - 可以在应用初始化时配置
+/*
+window.apiPrefetcher.addRule({
+  id: 'category-page',
+  route: '/category',
+  urls: ['/api/recommendations']
+});
+*/ 

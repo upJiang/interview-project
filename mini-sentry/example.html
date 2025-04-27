@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini-Sentry 示例</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    
+    h2 {
+      color: #3498db;
+      margin-top: 30px;
+    }
+    
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    pre {
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      padding: 15px;
+      overflow: auto;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+    }
+    
+    .logger {
+      height: 200px;
+      overflow-y: auto;
+      background-color: #f8f8f8;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+    
+    .success {
+      color: green;
+    }
+    
+    .warning {
+      color: orange;
+    }
+    
+    .error {
+      color: red;
+    }
+    
+    .info {
+      color: #3498db;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mini-Sentry 示例</h1>
+  <p>这个示例展示了Mini-Sentry的基本功能，可以尝试触发各种错误和埋点事件。</p>
+  
+  <div class="card">
+    <h2>1. 手动触发错误</h2>
+    <button id="throwError">抛出JS错误</button>
+    <button id="throwPromiseError">Promise拒绝</button>
+    <button id="resourceError">资源加载错误</button>
+    <button id="captureMessage">捕获消息</button>
+  </div>
+  
+  <div class="card">
+    <h2>2. 用户追踪</h2>
+    <button id="setUser">设置用户信息</button>
+    <button id="trackEvent">记录事件</button>
+    <button id="setTag">设置标签</button>
+    <button id="setExtra">添加额外信息</button>
+  </div>
+  
+  <div class="card">
+    <h2>3. API 测试</h2>
+    <button id="makeXhrSuccess">发送成功XHR请求</button>
+    <button id="makeXhrError">发送失败XHR请求</button>
+    <button id="clearBreadcrumbs">清空面包屑</button>
+    <button id="closeSDK">关闭SDK</button>
+  </div>
+  
+  <div class="logger" id="logger">
+    <div class="info">准备就绪，可以开始测试...</div>
+  </div>
+  
+  <!-- 载入SDK -->
+  <script>
+    // 模拟Mini-Sentry SDK
+    // 实际项目中，这部分由真实SDK提供
+    window.MiniSentry = {
+      init: function(options) {
+        log('info', 'SDK初始化成功，配置: ' + JSON.stringify(options));
+        return this;
+      },
+      captureException: function(error, context) {
+        log('error', '捕获异常: ' + error.message);
+        log('info', '上下文: ' + JSON.stringify(context));
+        return 'ERROR_ID_' + Math.floor(Math.random() * 1000000);
+      },
+      captureMessage: function(message, level, context) {
+        log(level || 'info', '捕获消息: ' + message);
+        log('info', '上下文: ' + JSON.stringify(context));
+        return 'MESSAGE_ID_' + Math.floor(Math.random() * 1000000);
+      },
+      trackEvent: function(eventName, properties) {
+        log('info', '事件追踪: ' + eventName + ', 属性: ' + JSON.stringify(properties));
+      },
+      setUser: function(user) {
+        log('info', '设置用户: ' + JSON.stringify(user));
+      },
+      setTag: function(key, value) {
+        log('info', '设置标签: ' + key + ' = ' + value);
+      },
+      setExtra: function(key, value) {
+        log('info', '设置额外信息: ' + key + ' = ' + JSON.stringify(value));
+      },
+      clearBreadcrumbs: function() {
+        log('info', '清空面包屑');
+      },
+      close: function() {
+        log('warning', 'SDK已关闭，将停止捕获错误和收集埋点');
+      }
+    };
+    
+    // 初始化SDK
+    MiniSentry.init({
+      dsn: 'https://example.com/collect',
+      appId: 'example-app',
+      debug: true,
+      maxBreadcrumbs: 50
+    });
+    
+    // 日志功能
+    function log(level, message) {
+      const logger = document.getElementById('logger');
+      const el = document.createElement('div');
+      el.className = level;
+      el.textContent = `[${new Date().toISOString().slice(11, 19)}] ${message}`;
+      logger.appendChild(el);
+      logger.scrollTop = logger.scrollHeight;
+    }
+    
+    // 绑定按钮事件
+    document.addEventListener('DOMContentLoaded', function() {
+      // 1. 手动触发错误
+      document.getElementById('throwError').addEventListener('click', function() {
+        try {
+          // 故意触发一个错误
+          const obj = null;
+          obj.nonExistentMethod();
+        } catch (error) {
+          MiniSentry.captureException(error, {
+            component: 'ErrorButton'
+          });
+        }
+      });
+      
+      document.getElementById('throwPromiseError').addEventListener('click', function() {
+        new Promise(function(resolve, reject) {
+          setTimeout(function() {
+            reject(new Error('Promise被拒绝'));
+          }, 100);
+        }).catch(function(error) {
+          MiniSentry.captureException(error, {
+            component: 'PromiseButton'
+          });
+        });
+      });
+      
+      document.getElementById('resourceError').addEventListener('click', function() {
+        const img = document.createElement('img');
+        img.onerror = function() {
+          MiniSentry.captureException(new Error('图片加载失败'), {
+            component: 'ResourceButton',
+            extra: { url: img.src }
+          });
+        };
+        img.src = 'non-existent-image.jpg';
+      });
+      
+      document.getElementById('captureMessage').addEventListener('click', function() {
+        MiniSentry.captureMessage('手动触发的警告消息', 'warning', {
+          component: 'MessageButton',
+          importance: 'medium'
+        });
+      });
+      
+      // 2. 用户追踪
+      document.getElementById('setUser').addEventListener('click', function() {
+        MiniSentry.setUser({
+          id: 'user_' + Math.floor(Math.random() * 10000),
+          username: '测试用户',
+          email: 'user@example.com',
+          role: 'tester'
+        });
+      });
+      
+      document.getElementById('trackEvent').addEventListener('click', function() {
+        MiniSentry.trackEvent('button_click', {
+          buttonId: 'trackEvent',
+          page: 'example',
+          timestamp: new Date().toISOString()
+        });
+      });
+      
+      document.getElementById('setTag').addEventListener('click', function() {
+        MiniSentry.setTag('version', '1.0.' + Math.floor(Math.random() * 10));
+      });
+      
+      document.getElementById('setExtra').addEventListener('click', function() {
+        MiniSentry.setExtra('deviceInfo', {
+          screenSize: `${window.innerWidth}x${window.innerHeight}`,
+          userAgent: navigator.userAgent,
+          language: navigator.language
+        });
+      });
+      
+      // 3. API 测试
+      document.getElementById('makeXhrSuccess').addEventListener('click', function() {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://jsonplaceholder.typicode.com/todos/1');
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            log('success', '请求成功: ' + xhr.responseText);
+          }
+        };
+        xhr.onerror = function() {
+          MiniSentry.captureException(new Error('XHR请求失败'), {
+            extra: { url: xhr.responseURL }
+          });
+        };
+        xhr.send();
+      });
+      
+      document.getElementById('makeXhrError').addEventListener('click', function() {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://non-existent-domain-12345.com/api');
+        xhr.onload = function() {
+          if (xhr.status !== 200) {
+            MiniSentry.captureMessage('HTTP错误: ' + xhr.status, 'error', {
+              extra: { response: xhr.responseText }
+            });
+          }
+        };
+        xhr.onerror = function() {
+          MiniSentry.captureException(new Error('XHR请求失败'), {
+            extra: { url: xhr.responseURL }
+          });
+        };
+        xhr.send();
+      });
+      
+      document.getElementById('clearBreadcrumbs').addEventListener('click', function() {
+        MiniSentry.clearBreadcrumbs();
+      });
+      
+      document.getElementById('closeSDK').addEventListener('click', function() {
+        MiniSentry.close();
+      });
+    });
+  </script>
+</body>
+</html> 

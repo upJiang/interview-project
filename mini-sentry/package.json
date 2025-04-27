@@ -1,0 +1,23 @@
+{
+  "name": "mini-sentry",
+  "version": "1.0.0",
+  "description": "轻量级前端异常监控与埋点系统",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "serve .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "sentry",
+    "error",
+    "monitor",
+    "exception",
+    "tracking",
+    "frontend"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+} 
