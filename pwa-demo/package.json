@@ -1,0 +1,16 @@
+{
+  "name": "pwa-demo",
+  "version": "1.0.0",
+  "description": "一个简单的PWA演示项目",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -o /pwa-demo"
+  },
+  "keywords": [
+    "pwa",
+    "demo",
+    "service-worker"
+  ],
+  "author": "",
+  "license": "MIT"
+}

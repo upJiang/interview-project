@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4285f4">
+    <title>PWA 演示</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="images/icon-192x192.png" type="image/png">
+    <link rel="apple-touch-icon" href="images/icon-192x192.png">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PWA 演示应用</h1>
+        </header>
+        <main>
+            <div class="card">
+                <h2>欢迎使用PWA演示应用</h2>
+                <p>这是一个简单的PWA（Progressive Web App）演示应用。</p>
+                <p>PWA特性包括：</p>
+                <ul>
+                    <li>可安装到主屏幕</li>
+                    <li>离线工作能力</li>
+                    <li>推送通知</li>
+                    <li>后台同步</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h2>当前状态</h2>
+                <p id="status">检查中...</p>
+                <button id="refresh">刷新</button>
+            </div>
+        </main>
+        <footer>
+            <p>PWA 演示应用 - 面试学习项目</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // 注册 Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // 使用相对路径，适应不同部署环境
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('Service Worker 注册成功:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker 注册失败:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html> 

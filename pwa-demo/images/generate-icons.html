@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生成PWA图标</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 10px;
+        }
+        .instructions {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PWA图标生成器</h1>
+    
+    <div>
+        <h2>192x192图标</h2>
+        <canvas id="canvas192" width="192" height="192"></canvas>
+        <br>
+        <button id="download192">下载192x192图标</button>
+    </div>
+    
+    <div>
+        <h2>512x512图标</h2>
+        <canvas id="canvas512" width="512" height="512"></canvas>
+        <br>
+        <button id="download512">下载512x512图标</button>
+    </div>
+    
+    <div class="instructions">
+        <h3>使用说明：</h3>
+        <p>1. 点击下载按钮保存图标</p>
+        <p>2. 将图标重命名为icon-192x192.png和icon-512x512.png</p>
+        <p>3. 将图标放在pwa-demo/images目录下</p>
+    </div>
+    
+    <script>
+        // 绘制192x192图标
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            
+            // 填充背景
+            ctx.fillStyle = '#4285f4';
+            ctx.fillRect(0, 0, size, size);
+            
+            // 绘制外环
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = size * 0.05;
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size * 0.35, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // 绘制PWA文字
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PWA', size/2, size/2);
+        }
+        
+        // 初始化画布
+        const canvas192 = document.getElementById('canvas192');
+        const canvas512 = document.getElementById('canvas512');
+        
+        drawIcon(canvas192, 192);
+        drawIcon(canvas512, 512);
+        
+        // 下载按钮事件
+        document.getElementById('download192').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'icon-192x192.png';
+            link.href = canvas192.toDataURL('image/png');
+            link.click();
+        });
+        
+        document.getElementById('download512').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'icon-512x512.png';
+            link.href = canvas512.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html> 

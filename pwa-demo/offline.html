@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4285f4">
+    <title>离线状态 - PWA 演示</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="images/icon-192x192.png" type="image/png">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PWA 演示应用</h1>
+        </header>
+        <main>
+            <div class="card">
+                <h2>您当前处于离线状态</h2>
+                <p>无法连接到网络。请检查您的互联网连接并重试。</p>
+                <p>这个页面是通过Service Worker技术提供的离线内容。</p>
+            </div>
+            <div class="card">
+                <button id="retry">重试连接</button>
+            </div>
+        </main>
+        <footer>
+            <p>PWA 演示应用 - 面试学习项目</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('retry').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html> 
