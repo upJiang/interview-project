@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Worker 示例</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Web Worker 多线程计算示例</h1>
+    
+    <div class="description">
+      <p>
+        此示例演示了使用 Web Worker 在后台线程执行复杂计算的过程，
+        避免阻塞主线程UI渲染。
+      </p>
+    </div>
+    
+    <div class="task-panel">
+      <h2>斐波那契数列计算</h2>
+      <div class="input-group">
+        <label for="number">计算第 n 个斐波那契数：</label>
+        <input type="number" id="number" min="1" max="50" value="40">
+      </div>
+      
+      <div class="buttons">
+        <button id="calc-main">在主线程计算</button>
+        <button id="calc-worker">使用 Worker 计算</button>
+      </div>
+      
+      <div class="result-area">
+        <div class="result">
+          <span>结果：</span>
+          <span id="result-value">尚未计算</span>
+        </div>
+        <div class="time">
+          <span>计算耗时：</span>
+          <span id="calculation-time">0 ms</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="animation">
+      <h2>动画演示（测试主线程是否阻塞）</h2>
+      <div id="animation-box"></div>
+    </div>
+    
+    <div class="status">
+      <h2>UI响应状态</h2>
+      <button id="test-ui">点击测试UI响应</button>
+      <div id="click-counter">点击次数: 0</div>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html> 
