@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSP内容安全策略 - 前端安全项目</title>
+    <!-- CSP策略：只允许从自己的域加载资源，禁止内联脚本 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self';">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>内容安全策略 (CSP)</h1>
+        <p>保护网站免受注入攻击的强大工具</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>什么是内容安全策略 (CSP)?</h2>
+            <p>内容安全策略（Content Security Policy，CSP）是一种额外的安全层，用于检测并减轻某些类型的攻击，包括跨站脚本攻击（XSS）和数据注入攻击。这些攻击可用于窃取数据、破坏网站或将恶意软件分发给访问者。</p>
+            
+            <p>CSP通过指定网页可以加载哪些资源，以及这些资源可以从哪些位置加载，来减少浏览器可能执行的恶意内容。通常，它会禁止内联脚本执行，并限制只能从特定的信任源加载外部资源。</p>
+            
+            <h2>CSP的主要目标</h2>
+            <ul>
+                <li>减轻XSS攻击风险</li>
+                <li>控制资源加载来源</li>
+                <li>限制Eval等危险功能的使用</li>
+                <li>提供违规报告机制</li>
+                <li>防止点击劫持攻击</li>
+            </ul>
+            
+            <h2>如何实施CSP</h2>
+            <p>CSP可以通过以下两种方式之一实施：</p>
+            <ol>
+                <li><strong>HTTP响应头</strong>: 服务器在HTTP响应中包含<code>Content-Security-Policy</code>头。</li>
+                <li><strong>HTML元标签</strong>: 在HTML文档的<code>&lt;head&gt;</code>部分包含一个<code>&lt;meta&gt;</code>标签。</li>
+            </ol>
+            
+            <div class="demo-container">
+                <h3>HTTP响应头示例</h3>
+                <pre><code>Content-Security-Policy: default-src 'self'; script-src 'self' https://trusted.cdn.com; img-src 'self' https://img.example.com; style-src 'self' 'unsafe-inline';</code></pre>
+                
+                <h3>HTML元标签示例</h3>
+                <pre><code>&lt;meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://trusted.cdn.com;"&gt;</code></pre>
+            </div>
+            
+            <h2>CSP指令说明</h2>
+            <ul>
+                <li><code>default-src</code>: 为其他CSP资源指令提供备用值</li>
+                <li><code>script-src</code>: 限制JavaScript文件的来源</li>
+                <li><code>style-src</code>: 限制CSS文件的来源</li>
+                <li><code>img-src</code>: 限制图片的来源</li>
+                <li><code>connect-src</code>: 限制通过XHR、WebSockets或EventSource加载连接的源</li>
+                <li><code>font-src</code>: 限制字体文件的来源</li>
+                <li><code>media-src</code>: 限制视频和音频的来源</li>
+                <li><code>frame-src</code>: 限制iframe的来源</li>
+                <li><code>report-uri</code>: 指定浏览器将CSP违规发送到的URL</li>
+            </ul>
+            
+            <h2>源值类型</h2>
+            <ul>
+                <li><code>'self'</code>: 允许来自与当前源相同的资源</li>
+                <li><code>'none'</code>: 不允许任何源</li>
+                <li><code>'unsafe-inline'</code>: 允许内联JavaScript和CSS</li>
+                <li><code>'unsafe-eval'</code>: 允许使用eval()和类似的方法</li>
+                <li><code>https://example.com</code>: 允许从指定域名加载资源</li>
+                <li><code>*.example.com</code>: 允许从example.com的所有子域加载资源</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>CSP示例展示</h2>
+            
+            <div class="demo-container">
+                <h3>CSP测试</h3>
+                <p>本页面已应用CSP策略(<code>default-src 'self'; script-src 'self'; style-src 'self';</code>)，以下是几个测试:</p>
+                
+                <div id="cspTestResults" style="margin-top: 15px;">
+                    <div class="test-case">
+                        <h4>测试1: 内联脚本</h4>
+                        <p>以下内联脚本将<strong>不会</strong>执行:</p>
+                        <pre><code>&lt;script&gt;alert("这个内联脚本被CSP阻止");&lt;/script&gt;</code></pre>
+                        <button id="testInlineScript">测试内联脚本</button>
+                        <div class="result" id="inlineScriptResult"></div>
+                    </div>
+                    
+                    <div class="test-case">
+                        <h4>测试2: 内联样式</h4>
+                        <p>以下内联样式将<strong>不会</strong>生效:</p>
+                        <pre><code>&lt;div style="color: red; font-weight: bold;"&gt;这个内联样式被CSP阻止&lt;/div&gt;</code></pre>
+                        <button id="testInlineStyle">测试内联样式</button>
+                        <div class="result" id="inlineStyleResult"></div>
+                    </div>
+                    
+                    <div class="test-case">
+                        <h4>测试3: 外部脚本</h4>
+                        <p>从允许的源加载的外部脚本<strong>可以</strong>执行:</p>
+                        <button id="testAllowedExternalScript">测试允许的外部脚本</button>
+                        <div class="result" id="allowedExternalScriptResult"></div>
+                    </div>
+                    
+                    <div class="test-case">
+                        <h4>测试4: 不允许的外部脚本</h4>
+                        <p>从不允许的源加载的外部脚本将<strong>不会</strong>执行:</p>
+                        <button id="testDisallowedExternalScript">测试不允许的外部脚本</button>
+                        <div class="result" id="disallowedExternalScriptResult"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>推荐的CSP配置</h3>
+            <p>以下是电商网站的CSP推荐配置:</p>
+            <pre><code>Content-Security-Policy: 
+    default-src 'self';
+    script-src 'self' https://trusted-analytics.com https://payment-provider.com;
+    style-src 'self' https://fonts.googleapis.com;
+    img-src 'self' data: https://img-cdn.com;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://api.mystore.com;
+    frame-src 'self' https://payment-provider.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self' https://payment-provider.com;
+    frame-ancestors 'self';
+    report-uri https://mystore.com/csp-report;
+    upgrade-insecure-requests;</code></pre>
+            
+            <h3>CSP实现代码</h3>
+            <h4>Node.js + Express实现</h4>
+            <pre><code>const express = require('express');
+const helmet = require('helmet');
+const app = express();
+
+// 使用helmet中间件设置CSP
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://trusted-analytics.com", "https://payment-provider.com"],
+        styleSrc: ["'self'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https://img-cdn.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: ["'self'", "https://api.mystore.com"],
+        frameSrc: ["'self'", "https://payment-provider.com"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'", "https://payment-provider.com"],
+        frameAncestors: ["'self'"],
+        reportUri: "/csp-report",
+        upgradeInsecureRequests: []
+    }
+}));
+
+// 处理CSP违规报告
+app.post('/csp-report', express.json({ type: 'application/csp-report' }), (req, res) => {
+    console.log('CSP违规:', req.body);
+    res.status(204).end();
+});
+
+app.listen(3000, () => {
+    console.log('服务器启动在端口3000');
+});</code></pre>
+
+            <h4>前端检测CSP支持</h4>
+            <pre><code>// 检查浏览器是否支持CSP
+function isCSPSupported() {
+    return 'securitypolicy' in document || 'CSP' in window;
+}
+
+// 检测是否有CSP阻止的资源
+function detectCSPBlocking() {
+    try {
+        // 尝试添加内联脚本
+        const script = document.createElement('script');
+        script.textContent = 'window.inlineScriptExecuted = true;';
+        document.head.appendChild(script);
+        
+        // 检查脚本是否执行
+        return !window.inlineScriptExecuted;
+    } catch (e) {
+        console.error('CSP检测错误:', e);
+        return true; // 假设有阻止
+    }
+}</code></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/csp-demo.js"></script>
+</body>
+</html>

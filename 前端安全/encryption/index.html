@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密算法演示 - AES与RSA</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>加密算法演示</h1>
+        
+        <div class="section">
+            <h2>AES 加密演示</h2>
+            <div class="description">
+                AES（高级加密标准）是一种对称加密算法，使用同一个密钥进行加密和解密操作。本演示支持128、192和256位密钥长度。
+            </div>
+            
+            <div class="input-group">
+                <label for="aes-input">输入文本：</label>
+                <textarea id="aes-input" placeholder="请输入要加密的文本..."></textarea>
+            </div>
+            
+            <div class="key-input">
+                <label for="aes-key">密钥：</label>
+                <input type="text" id="aes-key" placeholder="请输入密钥...">
+                <div class="key-note">密钥长度必须为16、24或32个字符（对应128、192或256位）</div>
+            </div>
+            
+            <div class="button-group">
+                <button id="aes-encrypt-btn" class="encrypt-btn">加密</button>
+                <button id="aes-decrypt-btn" class="decrypt-btn">解密</button>
+            </div>
+            
+            <div class="output-group">
+                <label for="aes-output">结果：</label>
+                <div id="aes-output"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>RSA 加密演示</h2>
+            <div class="description">
+                RSA是一种非对称加密算法，使用公钥加密，私钥解密。适用于数据安全传输和数字签名场景。
+            </div>
+            
+            <div class="input-group">
+                <label for="rsa-input">输入文本：</label>
+                <textarea id="rsa-input" placeholder="请输入要加密的文本..."></textarea>
+            </div>
+            
+            <div class="key-container">
+                <div class="key-group">
+                    <label for="rsa-public-key">公钥：</label>
+                    <textarea id="rsa-public-key" placeholder="公钥将在生成后显示在这里..."></textarea>
+                </div>
+                <div class="key-group">
+                    <label for="rsa-private-key">私钥：</label>
+                    <textarea id="rsa-private-key" placeholder="私钥将在生成后显示在这里..."></textarea>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="rsa-generate-btn">生成密钥对</button>
+                <button id="rsa-encrypt-btn" class="encrypt-btn">加密</button>
+                <button id="rsa-decrypt-btn" class="decrypt-btn">解密</button>
+            </div>
+            
+            <div class="output-group">
+                <label for="rsa-output">结果：</label>
+                <div id="rsa-output"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.2.1/jsencrypt.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 

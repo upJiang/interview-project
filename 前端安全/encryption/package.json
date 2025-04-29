@@ -1,0 +1,12 @@
+{
+  "name": "encryption-demo",
+  "version": "1.0.0",
+  "description": "AES和RSA加密演示",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}

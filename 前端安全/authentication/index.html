@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端认证安全 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>前端认证安全</h1>
+        <p>现代Web应用的认证方案与安全最佳实践</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>Web认证安全概述</h2>
+            <p>认证是确认用户身份的过程，在Web应用程序中实现安全认证至关重要。不安全的认证机制可能导致账户劫持、信息泄露和未授权访问等安全问题。</p>
+            
+            <h2>常见认证安全问题</h2>
+            <ul>
+                <li><strong>弱密码策略</strong>：允许简单易猜的密码</li>
+                <li><strong>明文传输凭证</strong>：未使用HTTPS保护传输数据</li>
+                <li><strong>Cookie不安全设置</strong>：缺少安全标志和适当的作用域限制</li>
+                <li><strong>会话固定攻击</strong>：未在登录后重新生成会话ID</li>
+                <li><strong>缺乏多因素认证</strong>：仅依赖单一认证因素</li>
+                <li><strong>无限制登录尝试</strong>：缺少防暴力破解机制</li>
+                <li><strong>JWT令牌管理不当</strong>：不安全存储或缺少过期机制</li>
+            </ul>
+            
+            <h2>认证安全最佳实践</h2>
+            <ul>
+                <li><strong>强密码策略</strong>：实施密码复杂性要求和定期更换</li>
+                <li><strong>HTTPS传输</strong>：使用TLS加密保护所有认证相关通信</li>
+                <li><strong>安全Cookie设置</strong>：使用HttpOnly、Secure和SameSite标志</li>
+                <li><strong>多因素认证</strong>：结合多种认证因素如TOTP、SMS等</li>
+                <li><strong>防暴力破解</strong>：实施登录尝试限制和验证码</li>
+                <li><strong>安全令牌管理</strong>：正确处理JWT生成、验证与存储</li>
+                <li><strong>自动登出</strong>：实施会话超时和自动登出机制</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>安全认证示例</h2>
+            
+            <div class="demo-container">
+                <h3>示例：安全的JWT认证实现</h3>
+                <div>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="username">用户名:</label>
+                            <input type="text" id="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">密码:</label>
+                            <input type="password" id="password" required>
+                        </div>
+                        <button type="submit" id="loginBtn">登录</button>
+                    </form>
+                    
+                    <div id="tokenInfo" style="display: none; margin-top: 20px;">
+                        <h4>认证状态:</h4>
+                        <div id="authStatus"></div>
+                        <h4>令牌信息:</h4>
+                        <div id="tokenDetails" style="word-break: break-all;"></div>
+                        <button id="logoutBtn" style="margin-top: 10px;">登出</button>
+                        <button id="accessProtectedBtn" style="margin-top: 10px;">访问受保护资源</button>
+                    </div>
+                    
+                    <div id="protectedContent" style="display: none; margin-top: 20px; padding: 15px; border: 1px solid #3498db; background-color: #ebf5fb;">
+                        <h4>受保护的内容</h4>
+                        <p>这是只有认证用户才能看到的内容。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>代码实现要点</h3>
+            <pre><code>// 安全的JWT认证实现
+// 1. 使用HTTPS传输所有认证请求
+// 2. 验证用户输入，防止注入攻击
+// 3. 安全存储JWT令牌（使用HttpOnly Cookie或安全的localStorage策略）
+// 4. 实现令牌刷新机制和过期处理
+// 5. 添加CSRF防护
+
+// 客户端实现示例：
+function loginSecurely(username, password) {
+    // 1. 输入验证
+    if (!validateInput(username) || !validateInput(password)) {
+        return showError('无效的输入');
+    }
+    
+    // 2. 使用HTTPS发送认证请求
+    fetch('https://api.example.com/auth/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken() // CSRF保护
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include' // 包含Cookie
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.token) {
+            // 3. 安全存储令牌
+            securelyStoreToken(data.token);
+            
+            // 4. 设置令牌刷新计时器
+            setupTokenRefresh(data.expiresIn);
+            
+            // 5. 更新UI显示已认证状态
+            updateAuthenticatedUI();
+        }
+    })
+    .catch(error => {
+        console.error('认证错误:', error);
+        showError('登录失败');
+    });
+}</code></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/auth-security.js"></script>
+</body>
+</html> 

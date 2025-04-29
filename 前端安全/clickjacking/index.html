@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点击劫持防御 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+    <!-- X-Frame-Options 通过 meta 标签设置（通常会在 HTTP Header 中设置） -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <!-- Content-Security-Policy 的 frame-ancestors 指令 -->
+    <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none'">
+</head>
+<body>
+    <header>
+        <h1>点击劫持防御</h1>
+        <p>保护您的网站免受UI覆盖攻击</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>什么是点击劫持？</h2>
+            <p>点击劫持（Clickjacking），也称为用户界面重定向攻击，是一种欺骗用户在不知情的情况下点击隐藏的网页元素的攻击技术。攻击者通过在透明的iframe中加载目标网站，然后叠加在另一个诱人点击的页面上，诱导用户在不知情的情况下与目标网站进行交互。</p>
+            
+            <h2>常见的点击劫持攻击方式</h2>
+            <ul>
+                <li><strong>基本点击劫持</strong>：使用透明iframe覆盖在诱饵页面上</li>
+                <li><strong>游标模仿</strong>：显示假的鼠标指针来误导用户真实点击位置</li>
+                <li><strong>嵌套点击劫持</strong>：多层iframe嵌套以绕过简单的防御措施</li>
+                <li><strong>拖放劫持</strong>：欺骗用户执行拖放操作</li>
+            </ul>
+            
+            <h2>点击劫持防御策略</h2>
+            <ul>
+                <li><strong>X-Frame-Options</strong>：HTTP响应头，控制页面是否可被嵌入iframe</li>
+                <li><strong>CSP frame-ancestors</strong>：内容安全策略指令，更灵活地控制嵌入</li>
+                <li><strong>JavaScript框架检测</strong>：检测页面是否被嵌入iframe并采取行动</li>
+                <li><strong>定时器检测</strong>：检测顶层窗口跳转是否被阻止</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>点击劫持防御示例</h2>
+            
+            <div class="demo-container">
+                <h3>示例1：X-Frame-Options防御</h3>
+                <p>本页面已使用X-Frame-Options和CSP frame-ancestors指令防止被嵌入iframe。</p>
+                <p>HTTP响应头设置：</p>
+                <pre><code>X-Frame-Options: DENY</code></pre>
+                <p>或在HTML中：</p>
+                <pre><code>&lt;meta http-equiv="X-Frame-Options" content="DENY"&gt;</code></pre>
+                
+                <div style="margin-top: 15px;">
+                    <button id="testFrameOptions">测试X-Frame-Options</button>
+                    <div id="frameOptionsResult" class="result" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+            
+            <div class="demo-container">
+                <h3>示例2：JavaScript防御（Frame Busting）</h3>
+                <p>使用JavaScript代码防止页面被嵌入iframe：</p>
+                <pre><code>// 基本的Frame Busting代码
+if (window.self !== window.top) {
+    window.top.location = window.self.location;
+}</code></pre>
+                
+                <p>更安全的Frame Busting代码：</p>
+                <pre><code>// 更安全的方法
+(function() {
+    // 保存当前URL
+    var currentURL = window.location.href;
+    
+    // 尝试突破frame
+    try {
+        if (window.self !== window.top) {
+            // 如果在iframe中，尝试跳出
+            window.top.location.href = currentURL;
+        }
+    } catch (e) {
+        // 如果无法访问top（可能由于跨域限制），显示警告
+        document.body.innerHTML = '&lt;div style="background:red;color:white;padding:20px;font-size:20px;"&gt;警告：此页面可能被恶意嵌入，请直接访问 &lt;a href="' + currentURL + '"&gt;' + currentURL + '&lt;/a&gt;&lt;/div&gt;';
+    }
+    
+    // 定期检查是否在iframe中（以防被动态嵌入）
+    setInterval(function() {
+        try {
+            if (window.self !== window.top) {
+                window.top.location.href = currentURL;
+            }
+        } catch (e) {
+            // 处理错误
+        }
+    }, 1000);
+})();</code></pre>
+                
+                <div style="margin-top: 15px;">
+                    <button id="demoFrameBusting">演示Frame Busting效果</button>
+                    <div id="frameBustingResult" class="result" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+            
+            <div class="demo-container">
+                <h3>示例3：CSP frame-ancestors指令</h3>
+                <p>使用Content-Security-Policy的frame-ancestors指令控制页面嵌入：</p>
+                <pre><code>// 完全禁止嵌入
+Content-Security-Policy: frame-ancestors 'none';
+
+// 只允许同源嵌入
+Content-Security-Policy: frame-ancestors 'self';
+
+// 允许特定域名嵌入
+Content-Security-Policy: frame-ancestors 'self' https://trusted-site.com;</code></pre>
+                
+                <div style="margin-top: 15px;">
+                    <button id="testCSP">测试CSP frame-ancestors</button>
+                    <div id="cspResult" class="result" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+            
+            <h3>点击劫持攻击示例（仅作教育用途）</h3>
+            <pre><code>&lt;!-- 恶意页面代码示例 --&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;赢取免费礼品！&lt;/title&gt;
+    &lt;style&gt;
+        .decoy-button {
+            position: absolute;
+            top: 200px;
+            left: 150px;
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+        }
+        
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 500px;
+            height: 500px;
+            opacity: 0.0001; /* 几乎完全透明 */
+            z-index: 2;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;点击下方按钮领取免费礼品！&lt;/h1&gt;
+    
+    &lt;!-- 诱饵按钮 --&gt;
+    &lt;button class="decoy-button"&gt;点击领取&lt;/button&gt;
+    
+    &lt;!-- 透明iframe，加载目标网站 --&gt;
+    &lt;iframe src="https://victim-site.com/delete-account" scrolling="no"&gt;&lt;/iframe&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+            
+            <h3>综合防御方案</h3>
+            <p>在实际应用中，建议结合使用以下方法：</p>
+            <ol>
+                <li>设置 X-Frame-Options 为 DENY 或 SAMEORIGIN</li>
+                <li>设置 CSP frame-ancestors 为 'none' 或 'self'</li>
+                <li>实现 JavaScript Frame Busting 作为后备方案</li>
+                <li>对敏感操作增加额外的确认步骤（如二次确认、验证码等）</li>
+                <li>使用 SameSite Cookie 属性防止跨站请求</li>
+            </ol>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/clickjacking-protection.js"></script>
+</body>
+</html> 

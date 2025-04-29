@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请求频率限制 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>请求频率限制</h1>
+        <p>防止恶意请求与防刷策略</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>什么是请求频率限制？</h2>
+            <p>请求频率限制（Rate Limiting或Throttling）是一种安全机制，用于控制用户或应用在特定时间段内可以发送的请求数量。这种机制可以防止API的滥用、暴力攻击、恶意爬虫行为，以及保护服务器资源，确保系统的稳定性和可用性。</p>
+            
+            <h2>请求频率限制的必要性</h2>
+            <ul>
+                <li><strong>防止API滥用</strong>：限制过度使用API的行为</li>
+                <li><strong>抵御DOS/DDOS攻击</strong>：降低攻击者对系统的影响</li>
+                <li><strong>防止暴力破解</strong>：限制登录、密码重置等敏感操作的尝试次数</li>
+                <li><strong>资源保护</strong>：确保计算资源公平分配</li>
+                <li><strong>防止爬虫</strong>：限制自动化程序抓取数据</li>
+                <li><strong>保护系统稳定</strong>：避免意外流量突增导致系统崩溃</li>
+            </ul>
+            
+            <h2>限流的实现位置</h2>
+            <ul>
+                <li><strong>前端限流</strong>：在客户端实现，防止用户快速重复操作</li>
+                <li><strong>API网关/负载均衡器</strong>：在请求到达应用服务器之前进行限流</li>
+                <li><strong>应用服务器</strong>：在应用层进行限流，可根据具体业务逻辑实现更精细的控制</li>
+                <li><strong>数据库层</strong>：限制数据库连接数和查询频率</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>前端请求频率限制技术</h2>
+            
+            <div class="demo-container">
+                <h3>1. 防抖与节流</h3>
+                <p>这两种技术都可以限制函数的执行频率，在前端很常用。</p>
+                
+                <div class="demo-section">
+                    <h4>防抖（Debounce）演示</h4>
+                    <p>只有在连续触发事件停止一段时间后才执行函数，例如搜索框输入。</p>
+                    <input type="text" id="debounceInput" placeholder="输入内容试试..." style="width: 80%; padding: 8px;">
+                    <div id="debounceResult" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa;"></div>
+                </div>
+                
+                <div class="demo-section" style="margin-top: 20px;">
+                    <h4>节流（Throttle）演示</h4>
+                    <p>限制函数在特定时间内只能执行一次，例如滚动事件处理、按钮点击。</p>
+                    <button id="throttleButton" style="padding: 8px 16px;">快速点击此按钮</button>
+                    <div id="throttleResult" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa;"></div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>实现代码</h4>
+                    <pre><code>// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            func.apply(context, args);
+        }, wait);
+    };
+}
+
+// 节流函数
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => {
+                inThrottle = false;
+            }, limit);
+        }
+    };
+}</code></pre>
+                </div>
+            </div>
+            
+            <div class="demo-container">
+                <h3>2. 前端请求队列与重试策略</h3>
+                <p>合理管理多个并发请求，设置重试策略和超时机制。</p>
+                
+                <div class="demo-section">
+                    <h4>请求队列演示</h4>
+                    <p>点击按钮快速发送多个请求，请求将被队列化处理。</p>
+                    <button id="queueButton" style="padding: 8px 16px;">发送5个请求</button>
+                    <div id="queueResult" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa;"></div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>实现代码</h4>
+                    <pre><code>// 简单的请求队列实现
+class RequestQueue {
+    constructor(concurrency = 2) {
+        this.queue = [];
+        this.pendingCount = 0;
+        this.concurrency = concurrency;
+    }
+    
+    // 添加请求到队列
+    add(requestPromise, id) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({
+                requestPromise,
+                id,
+                resolve,
+                reject
+            });
+            this.processQueue();
+        });
+    }
+    
+    // 处理队列
+    processQueue() {
+        if (this.pendingCount >= this.concurrency || this.queue.length === 0) {
+            return;
+        }
+        
+        const { requestPromise, id, resolve, reject } = this.queue.shift();
+        this.pendingCount++;
+        
+        console.log(`开始处理请求: ${id}`);
+        
+        requestPromise()
+            .then(result => {
+                resolve(result);
+            })
+            .catch(error => {
+                reject(error);
+            })
+            .finally(() => {
+                this.pendingCount--;
+                this.processQueue();
+            });
+    }
+}</code></pre>
+                </div>
+            </div>
+            
+            <div class="demo-container">
+                <h3>3. 令牌桶算法实现限流</h3>
+                <p>使用令牌桶算法控制请求速率，当桶中有令牌时才能发送请求。</p>
+                
+                <div class="demo-section">
+                    <h4>令牌桶演示</h4>
+                    <p>令牌桶容量: <span id="bucketCapacity">5</span>, 填充速率: <span id="fillRate">1</span> 令牌/秒</p>
+                    <div id="tokenBucketDisplay" style="margin: 10px 0; height: 30px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;"></div>
+                    <button id="consumeTokenButton" style="padding: 8px 16px;">消耗令牌</button>
+                    <div id="tokenBucketResult" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa;"></div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>实现代码</h4>
+                    <pre><code>// 令牌桶算法实现
+class TokenBucket {
+    constructor(capacity, fillRate) {
+        this.capacity = capacity;      // 桶容量
+        this.tokens = capacity;        // 初始令牌数
+        this.fillRate = fillRate;      // 填充速率 (令牌/秒)
+        this.lastFillTime = Date.now();// 上次填充时间
+    }
+    
+    // 填充令牌
+    refill() {
+        const now = Date.now();
+        const elapsedTime = (now - this.lastFillTime) / 1000; // 转换为秒
+        const newTokens = elapsedTime * this.fillRate;
+        
+        if (newTokens > 0) {
+            this.tokens = Math.min(this.capacity, this.tokens + newTokens);
+            this.lastFillTime = now;
+        }
+    }
+    
+    // 尝试消耗令牌
+    consume(count = 1) {
+        this.refill();
+        
+        if (this.tokens >= count) {
+            this.tokens -= count;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // 获取当前令牌数
+    getTokens() {
+        this.refill();
+        return this.tokens;
+    }
+}</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h2>服务器端限流实现</h2>
+            
+            <h3>服务器端限流策略</h3>
+            <ul>
+                <li><strong>固定窗口计数器</strong>：在固定时间窗口内限制请求数量</li>
+                <li><strong>滑动窗口计数器</strong>：使用滑动时间窗口更平滑地限制请求</li>
+                <li><strong>漏桶算法</strong>：以固定速率处理请求，多余的请求等待或丢弃</li>
+                <li><strong>令牌桶算法</strong>：请求需消耗令牌，令牌以固定速率生成</li>
+            </ul>
+            
+            <h3>不同场景的限流参数配置</h3>
+            <ul>
+                <li><strong>登录API</strong>：IP + 用户名，15次/小时</li>
+                <li><strong>密码重置</strong>：IP + 邮箱，5次/小时</li>
+                <li><strong>搜索API</strong>：用户 ID，10次/分钟</li>
+                <li><strong>商品详情</strong>：IP，100次/分钟</li>
+                <li><strong>下单API</strong>：用户 ID，10次/分钟</li>
+                <li><strong>支付API</strong>：用户 ID，5次/分钟</li>
+            </ul>
+            
+            <h3>Express.js中的限流实现示例</h3>
+            <pre><code>const express = require('express');
+const rateLimit = require('express-rate-limit');
+const RedisStore = require('rate-limit-redis');
+const Redis = require('ioredis');
+
+const app = express();
+const redis = new Redis();
+
+// 创建基本限流中间件
+const baseLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15分钟窗口
+    max: 100, // 每个IP限制100个请求
+    standardHeaders: true, // 返回标准的RateLimit头部
+    store: new RedisStore({
+        sendCommand: (...args) => redis.call(...args)
+    }),
+    message: {
+        status: 429,
+        message: '请求过于频繁，请稍后再试'
+    }
+});
+
+// 应用全局限流
+app.use(baseLimiter);
+
+// 特定API的更严格限流
+const loginLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1小时
+    max: 15, // 每小时最多15次
+    keyGenerator: (req) => {
+        // 基于IP和用户名组合的限流
+        return `${req.ip}:${req.body.username}`;
+    },
+    store: new RedisStore({
+        sendCommand: (...args) => redis.call(...args)
+    }),
+    message: {
+        status: 429,
+        message: '登录尝试次数过多，请1小时后再试'
+    }
+});
+
+// 应用到登录路由
+app.post('/api/login', loginLimiter, (req, res) => {
+    // 登录逻辑
+});
+
+app.listen(3000, () => {
+    console.log('服务器运行在端口3000');
+});</code></pre>
+            
+            <h3>动态调整限流策略</h3>
+            <p>根据系统负载、用户信用等级等因素动态调整限流参数：</p>
+            <pre><code>// 动态限流中间件示例
+function dynamicRateLimiter(req, res, next) {
+    const userId = req.user?.id;
+    const userTier = getUserTier(userId); // 获取用户等级
+    const systemLoad = getSystemLoad(); // 获取系统负载
+    
+    let rateLimit;
+    
+    // 根据用户等级设置基础限制
+    switch(userTier) {
+        case 'premium':
+            rateLimit = 100;
+            break;
+        case 'standard':
+            rateLimit = 50;
+            break;
+        default:
+            rateLimit = 20;
+    }
+    
+    // 根据系统负载调整
+    if (systemLoad > 0.8) { // 高负载
+        rateLimit = Math.floor(rateLimit * 0.5); // 降低50%
+    } else if (systemLoad > 0.5) { // 中等负载
+        rateLimit = Math.floor(rateLimit * 0.8); // 降低20%
+    }
+    
+    // 检查用户当前请求数
+    const currentRequests = getUserRequestCount(userId);
+    
+    if (currentRequests >= rateLimit) {
+        return res.status(429).json({
+            error: '请求频率超限',
+            retryAfter: 60 // 建议60秒后重试
+        });
+    }
+    
+    // 增加请求计数
+    incrementUserRequestCount(userId);
+    
+    // 继续处理请求
+    next();
+}</code></pre>
+        </div>
+        
+        <div class="content">
+            <h2>前端与服务器联动的限流策略</h2>
+            
+            <h3>前端配合服务器限流的最佳实践</h3>
+            <ul>
+                <li><strong>尊重RateLimit响应头</strong>：解析<code>X-RateLimit-*</code>头，做出相应处理</li>
+                <li><strong>退避算法</strong>：请求被限流时，按指数增长等待时间后再重试</li>
+                <li><strong>用户友好提示</strong>：当达到限制时，向用户展示剩余等待时间</li>
+                <li><strong>批量请求</strong>：将多个小请求合并为一个批量请求</li>
+                <li><strong>缓存结果</strong>：缓存请求结果，减少重复请求</li>
+            </ul>
+            
+            <h3>处理限流响应的代码示例</h3>
+            <pre><code>// 智能请求函数，处理限流响应
+async function smartFetch(url, options = {}) {
+    const MAX_RETRIES = 3;
+    let retryCount = 0;
+    let retryDelay = 1000; // 初始延迟1秒
+    
+    while (retryCount < MAX_RETRIES) {
+        try {
+            const response = await fetch(url, options);
+            
+            // 解析速率限制头
+            const remaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '-1');
+            const resetTime = parseInt(response.headers.get('X-RateLimit-Reset') || '0') * 1000;
+            
+            // 更新UI显示剩余配额
+            if (remaining >= 0) {
+                updateQuotaDisplay(remaining, new Date(resetTime));
+            }
+            
+            // 处理429状态码
+            if (response.status === 429) {
+                const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+                console.warn(`请求频率超限，${retryAfter}秒后重试`);
+                
+                // 向用户显示限流信息
+                showRateLimitWarning(retryAfter);
+                
+                // 等待指定时间后重试
+                await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                retryCount++;
+                continue;
+            }
+            
+            // 检查其他错误状态码
+            if (!response.ok) {
+                throw new Error(`HTTP Error: ${response.status}`);
+            }
+            
+            return response.json();
+        } catch (error) {
+            retryCount++;
+            
+            if (retryCount >= MAX_RETRIES) {
+                throw error;
+            }
+            
+            // 使用指数退避算法
+            console.warn(`请求失败，${retryDelay/1000}秒后重试`, error);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            retryDelay *= 2; // 下次等待时间翻倍
+        }
+    }
+}</code></pre>
+            
+            <h3>前端限流监控与预警</h3>
+            <pre><code>// 前端限流监控
+class RateLimitMonitor {
+    constructor() {
+        this.limitEvents = [];
+        this.warningThreshold = 3; // 3次限流触发警告
+        this.criticalThreshold = 10; // 10次限流触发危险提示
+    }
+    
+    // 记录限流事件
+    recordLimitEvent(endpoint, statusCode, retryAfter) {
+        const event = {
+            endpoint,
+            statusCode,
+            retryAfter,
+            timestamp: Date.now()
+        };
+        
+        this.limitEvents.push(event);
+        this.cleanOldEvents(); // 清理旧事件
+        this.checkThresholds(); // 检查是否超过阈值
+    }
+    
+    // 清理超过1小时的旧事件
+    cleanOldEvents() {
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        this.limitEvents = this.limitEvents.filter(event => 
+            event.timestamp >= oneHourAgo
+        );
+    }
+    
+    // 检查是否超过阈值
+    checkThresholds() {
+        const count = this.limitEvents.length;
+        
+        if (count >= this.criticalThreshold) {
+            this.showCriticalWarning();
+        } else if (count >= this.warningThreshold) {
+            this.showWarning();
+        }
+    }
+    
+    // 显示警告提示
+    showWarning() {
+        console.warn('警告：API请求频率接近限制，请减慢操作速度');
+        // 实际应用中可以显示用户友好的提示
+    }
+    
+    // 显示严重警告
+    showCriticalWarning() {
+        console.error('错误：API请求已被严重限流，系统功能可能受限');
+        // 实际应用中可以显示更明显的警告并限制用户操作
+    }
+}</code></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/throttling.js"></script>
+</body>
+</html> 

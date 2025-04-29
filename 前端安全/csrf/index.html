@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSRF攻击防御 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>CSRF攻击防御</h1>
+        <p>跨站请求伪造的防御策略与实践</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>什么是CSRF攻击？</h2>
+            <p>CSRF（Cross-Site Request Forgery，跨站请求伪造）是一种攻击，使得已通过身份验证的用户在不知情的情况下执行非本意的操作。攻击者通过在第三方网站中嵌入能够向受害者已验证的网站发送请求的代码，从而利用用户的身份与权限在用户不知情的情况下执行操作。</p>
+            
+            <h2>CSRF攻击的工作原理</h2>
+            <ol>
+                <li>用户登录了目标网站A并保持了登录状态（Cookie）</li>
+                <li>用户在不登出A的情况下，访问了恶意网站B</li>
+                <li>恶意网站B中包含代码，自动向网站A发起请求</li>
+                <li>由于用户仍处于网站A的登录状态，请求自动携带了用户的凭证信息</li>
+                <li>网站A无法区分请求是用户主动发起的还是被诱导发起的，执行了操作</li>
+            </ol>
+            
+            <h2>CSRF攻击的类型</h2>
+            <ul>
+                <li><strong>GET类型攻击</strong>：利用图片请求等进行不可见的请求</li>
+                <li><strong>POST类型攻击</strong>：通过自动提交表单完成攻击</li>
+                <li><strong>链接类型攻击</strong>：诱导用户点击特制链接</li>
+            </ul>
+            
+            <h2>防御CSRF的策略</h2>
+            <ul>
+                <li><strong>CSRF Token</strong>：服务器生成随机令牌，在表单中包含此令牌，提交时验证</li>
+                <li><strong>Double Submit Cookie</strong>：在Cookie和请求参数中都包含相同的随机值</li>
+                <li><strong>SameSite Cookie</strong>：设置Cookie的SameSite属性来限制跨站发送</li>
+                <li><strong>检查Referer头</strong>：验证请求来源是否合法</li>
+                <li><strong>自定义请求头</strong>：在AJAX请求中添加自定义头，跨域请求无法设置</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>CSRF防御示例</h2>
+            
+            <div class="demo-container">
+                <h3>示例：CSRF Token防御</h3>
+                <p>这个示例演示了如何在前端使用CSRF令牌保护表单提交：</p>
+                
+                <form id="secureForm">
+                    <div style="margin-bottom: 10px;">
+                        <label for="username">用户名：</label>
+                        <input type="text" id="username" name="username" required style="width: 100%; padding: 8px;">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label for="action">操作：</label>
+                        <select id="action" name="action" style="width: 100%; padding: 8px;">
+                            <option value="update">更新资料</option>
+                            <option value="delete">删除账户</option>
+                        </select>
+                    </div>
+                    <!-- 隐藏的CSRF令牌字段 -->
+                    <input type="hidden" id="csrfToken" name="csrf_token" value="">
+                    
+                    <button type="submit" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">提交</button>
+                </form>
+                
+                <div style="margin-top: 15px;">
+                    <h4>请求状态：</h4>
+                    <div id="requestStatus" style="border: 1px solid #3498db; padding: 10px; background-color: #ebf5fb;"></div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <button id="showRequestBtn" style="padding: 8px 16px; background-color: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;">显示请求代码</button>
+                    <div id="requestCode" style="margin-top: 10px; display: none; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;"></div>
+                </div>
+            </div>
+            
+            <h3>代码实现</h3>
+            <pre><code>// 生成CSRF令牌
+function generateCSRFToken() {
+    // 在实际应用中，令牌应该由服务器生成
+    // 这里仅作为前端演示，使用随机字符串
+    return Array(32).fill(0).map(() => 
+        Math.random().toString(36).charAt(2)
+    ).join('');
+}
+
+// 在页面加载时设置CSRF令牌
+document.addEventListener('DOMContentLoaded', () => {
+    // 生成令牌
+    const token = generateCSRFToken();
+    
+    // 设置表单中的令牌值
+    document.getElementById('csrfToken').value = token;
+    
+    // 同时在Cookie中设置令牌（Double Submit Cookie模式）
+    document.cookie = `CSRF-TOKEN=${token}; SameSite=Strict; Secure`;
+});
+
+// 拦截表单提交并添加CSRF验证
+document.getElementById('secureForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    
+    // 获取表单中的CSRF令牌
+    const formToken = document.getElementById('csrfToken').value;
+    
+    // 获取Cookie中的CSRF令牌
+    const cookieToken = getCookie('CSRF-TOKEN');
+    
+    // 验证令牌是否存在且一致
+    if (!formToken || !cookieToken || formToken !== cookieToken) {
+        // 令牌验证失败
+        setRequestStatus('错误：CSRF令牌验证失败！', true);
+        return false;
+    }
+    
+    // 令牌验证成功，执行提交逻辑
+    // 实际应用中，这里会发送AJAX请求到服务器
+    // 服务器端也需要验证CSRF令牌
+    
+    setRequestStatus('成功：表单已安全提交，CSRF令牌验证通过！', false);
+    
+    // 演示目的，重新生成令牌
+    const newToken = generateCSRFToken();
+    document.getElementById('csrfToken').value = newToken;
+    document.cookie = `CSRF-TOKEN=${newToken}; SameSite=Strict; Secure`;
+});
+
+// 从Cookie中获取值的辅助函数
+function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith(name + '=')) {
+            return cookie.substring(name.length + 1);
+        }
+    }
+    return '';
+}
+
+// 设置请求状态显示
+function setRequestStatus(message, isError) {
+    const statusElement = document.getElementById('requestStatus');
+    statusElement.textContent = message;
+    statusElement.style.backgroundColor = isError ? '#fadbd8' : '#d5f5e3';
+    statusElement.style.borderColor = isError ? '#e74c3c' : '#2ecc71';
+}</code></pre>
+            
+            <h3>实际应用中的CSRF防御最佳实践</h3>
+            <ul>
+                <li>结合使用CSRF令牌和SameSite Cookie属性</li>
+                <li>对重要操作使用验证码或二次确认</li>
+                <li>在AJAX请求中设置自定义请求头（如X-Requested-With）</li>
+                <li>使用合适的HTTP方法（POST/PUT/DELETE而非GET）</li>
+                <li>设置适当的CORS政策，控制哪些域可以发送请求</li>
+            </ul>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/csrf-protection.js"></script>
+</body>
+</html> 

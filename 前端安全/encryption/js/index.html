@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端加密演示</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .card {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+            word-break: break-all;
+        }
+        .error {
+            border-left: 4px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .success {
+            border-left: 4px solid #2ecc71;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3498db;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>前端加密解密演示</h1>
+    <p>本页面演示了在浏览器中使用Web Crypto API进行加密和解密的方法。</p>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="aes">AES加密</div>
+        <div class="tab" data-tab="rsa">RSA加密</div>
+        <div class="tab" data-tab="signature">数字签名</div>
+    </div>
+
+    <!-- AES加密解密 -->
+    <div class="tab-content active" id="aes-content">
+        <h2>AES对称加密</h2>
+        <p>AES是一种对称加密算法，加密和解密使用相同的密钥。</p>
+        
+        <div class="container">
+            <div class="card">
+                <h3>AES加密</h3>
+                <div class="form-group">
+                    <label for="aes-key">密钥 (16字节，自动生成)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="aes-key" readonly>
+                        <button id="generate-aes-key">生成密钥</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="aes-plaintext">明文</label>
+                    <textarea id="aes-plaintext" placeholder="要加密的文本"></textarea>
+                </div>
+                <button id="aes-encrypt">加密</button>
+                
+                <div id="aes-encrypt-result" class="result" style="display: none;">
+                    <div>
+                        <strong>加密结果:</strong>
+                        <div id="aes-ciphertext"></div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <strong>初始向量(IV):</strong>
+                        <div id="aes-iv"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>AES解密</h3>
+                <div class="form-group">
+                    <label for="aes-decrypt-key">密钥</label>
+                    <input type="text" id="aes-decrypt-key" placeholder="16字节的十六进制密钥">
+                </div>
+                <div class="form-group">
+                    <label for="aes-ciphertext-input">密文 (Base64)</label>
+                    <textarea id="aes-ciphertext-input" placeholder="加密后的Base64文本"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="aes-iv-input">初始向量(IV) (Base64)</label>
+                    <input type="text" id="aes-iv-input" placeholder="Base64编码的IV">
+                </div>
+                <button id="aes-decrypt">解密</button>
+                
+                <div id="aes-decrypt-result" class="result" style="display: none;">
+                    <strong>解密结果:</strong>
+                    <div id="aes-decrypted"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RSA加密解密 -->
+    <div class="tab-content" id="rsa-content">
+        <h2>RSA非对称加密</h2>
+        <p>RSA是一种非对称加密算法，使用公钥加密，私钥解密。</p>
+        
+        <div style="margin-bottom: 20px;">
+            <button id="generate-rsa-keypair">生成RSA密钥对</button>
+            <div id="rsa-keypair-result" style="display: none; margin-top: 10px;">
+                <div class="form-group">
+                    <label for="rsa-public-key">公钥 (Base64)</label>
+                    <textarea id="rsa-public-key" readonly></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rsa-private-key">私钥 (Base64)</label>
+                    <textarea id="rsa-private-key" readonly></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <div class="card">
+                <h3>RSA加密</h3>
+                <div class="form-group">
+                    <label for="rsa-plaintext">明文</label>
+                    <textarea id="rsa-plaintext" placeholder="要加密的文本"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rsa-encrypt-public-key">公钥 (Base64)</label>
+                    <textarea id="rsa-encrypt-public-key" placeholder="用于加密的公钥"></textarea>
+                </div>
+                <button id="rsa-encrypt">加密</button>
+                
+                <div id="rsa-encrypt-result" class="result" style="display: none;">
+                    <strong>加密结果:</strong>
+                    <div id="rsa-ciphertext"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>RSA解密</h3>
+                <div class="form-group">
+                    <label for="rsa-ciphertext-input">密文 (Base64)</label>
+                    <textarea id="rsa-ciphertext-input" placeholder="加密后的Base64文本"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rsa-decrypt-private-key">私钥 (Base64)</label>
+                    <textarea id="rsa-decrypt-private-key" placeholder="用于解密的私钥"></textarea>
+                </div>
+                <button id="rsa-decrypt">解密</button>
+                
+                <div id="rsa-decrypt-result" class="result" style="display: none;">
+                    <strong>解密结果:</strong>
+                    <div id="rsa-decrypted"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数字签名 -->
+    <div class="tab-content" id="signature-content">
+        <h2>数字签名</h2>
+        <p>数字签名用于验证消息的完整性和发送者的身份。使用私钥签名，公钥验证。</p>
+        
+        <div style="margin-bottom: 20px;">
+            <button id="generate-signature-keypair">生成签名密钥对</button>
+            <div id="signature-keypair-result" style="display: none; margin-top: 10px;">
+                <div class="form-group">
+                    <label for="signature-public-key">公钥 (Base64)</label>
+                    <textarea id="signature-public-key" readonly></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="signature-private-key">私钥 (Base64)</label>
+                    <textarea id="signature-private-key" readonly></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <div class="card">
+                <h3>签名</h3>
+                <div class="form-group">
+                    <label for="signature-message">消息</label>
+                    <textarea id="signature-message" placeholder="要签名的消息"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="signature-private-key-input">私钥 (Base64)</label>
+                    <textarea id="signature-private-key-input" placeholder="用于签名的私钥"></textarea>
+                </div>
+                <button id="sign-message">签名</button>
+                
+                <div id="signature-result" class="result" style="display: none;">
+                    <strong>消息摘要 (SHA-256):</strong>
+                    <div id="message-digest"></div>
+                    <div style="margin-top: 10px;">
+                        <strong>签名结果:</strong>
+                        <div id="signature-value"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>验证签名</h3>
+                <div class="form-group">
+                    <label for="verify-message">消息</label>
+                    <textarea id="verify-message" placeholder="原始消息"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="verify-signature">签名 (Base64)</label>
+                    <textarea id="verify-signature" placeholder="消息的签名"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="verify-public-key">公钥 (Base64)</label>
+                    <textarea id="verify-public-key" placeholder="用于验证的公钥"></textarea>
+                </div>
+                <button id="verify-signature-btn">验证签名</button>
+                
+                <div id="verify-result" class="result" style="display: none;">
+                    <strong>验证结果:</strong>
+                    <div id="verify-result-value"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="crypto.js"></script>
+    <script>
+        // 切换标签
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const tabName = tab.getAttribute('data-tab');
+                document.getElementById(`${tabName}-content`).classList.add('active');
+            });
+        });
+
+        // 显示结果或错误
+        function showResult(elementId, success = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.classList.remove('error', 'success');
+            element.classList.add(success ? 'success' : 'error');
+        }
+
+        // AES加密相关
+        document.getElementById('generate-aes-key').addEventListener('click', () => {
+            const key = AESUtils.generateKey();
+            document.getElementById('aes-key').value = key;
+        });
+
+        document.getElementById('aes-encrypt').addEventListener('click', async () => {
+            try {
+                const key = document.getElementById('aes-key').value;
+                const plaintext = document.getElementById('aes-plaintext').value;
+                
+                if (!key) {
+                    throw new Error('请先生成密钥');
+                }
+                if (!plaintext) {
+                    throw new Error('请输入明文');
+                }
+                
+                const result = await AESUtils.encrypt(plaintext, key);
+                
+                document.getElementById('aes-ciphertext').textContent = result.ciphertext;
+                document.getElementById('aes-iv').textContent = result.iv;
+                showResult('aes-encrypt-result');
+            } catch (error) {
+                document.getElementById('aes-ciphertext').textContent = `错误: ${error.message}`;
+                document.getElementById('aes-iv').textContent = '';
+                showResult('aes-encrypt-result', false);
+            }
+        });
+
+        document.getElementById('aes-decrypt').addEventListener('click', async () => {
+            try {
+                const key = document.getElementById('aes-decrypt-key').value;
+                const ciphertext = document.getElementById('aes-ciphertext-input').value;
+                const iv = document.getElementById('aes-iv-input').value;
+                
+                if (!key || !ciphertext || !iv) {
+                    throw new Error('请输入密钥、密文和IV');
+                }
+                
+                const plaintext = await AESUtils.decrypt(ciphertext, key, iv);
+                
+                document.getElementById('aes-decrypted').textContent = plaintext;
+                showResult('aes-decrypt-result');
+            } catch (error) {
+                document.getElementById('aes-decrypted').textContent = `错误: ${error.message}`;
+                showResult('aes-decrypt-result', false);
+            }
+        });
+
+        // RSA加密相关
+        document.getElementById('generate-rsa-keypair').addEventListener('click', async () => {
+            try {
+                const keyPair = await RSAUtils.generateKeyPair();
+                
+                document.getElementById('rsa-public-key').value = keyPair.publicKey;
+                document.getElementById('rsa-private-key').value = keyPair.privateKey;
+                document.getElementById('rsa-keypair-result').style.display = 'block';
+            } catch (error) {
+                alert(`RSA密钥对生成失败: ${error.message}`);
+            }
+        });
+
+        document.getElementById('rsa-encrypt').addEventListener('click', async () => {
+            try {
+                const plaintext = document.getElementById('rsa-plaintext').value;
+                const publicKey = document.getElementById('rsa-encrypt-public-key').value;
+                
+                if (!plaintext || !publicKey) {
+                    throw new Error('请输入明文和公钥');
+                }
+                
+                const ciphertext = await RSAUtils.encrypt(plaintext, publicKey);
+                
+                document.getElementById('rsa-ciphertext').textContent = ciphertext;
+                showResult('rsa-encrypt-result');
+            } catch (error) {
+                document.getElementById('rsa-ciphertext').textContent = `错误: ${error.message}`;
+                showResult('rsa-encrypt-result', false);
+            }
+        });
+
+        document.getElementById('rsa-decrypt').addEventListener('click', async () => {
+            try {
+                const ciphertext = document.getElementById('rsa-ciphertext-input').value;
+                const privateKey = document.getElementById('rsa-decrypt-private-key').value;
+                
+                if (!ciphertext || !privateKey) {
+                    throw new Error('请输入密文和私钥');
+                }
+                
+                const plaintext = await RSAUtils.decrypt(ciphertext, privateKey);
+                
+                document.getElementById('rsa-decrypted').textContent = plaintext;
+                showResult('rsa-decrypt-result');
+            } catch (error) {
+                document.getElementById('rsa-decrypted').textContent = `错误: ${error.message}`;
+                showResult('rsa-decrypt-result', false);
+            }
+        });
+
+        // 数字签名相关
+        document.getElementById('generate-signature-keypair').addEventListener('click', async () => {
+            try {
+                const keyPair = await SignatureUtils.generateKeyPair();
+                
+                document.getElementById('signature-public-key').value = keyPair.publicKey;
+                document.getElementById('signature-private-key').value = keyPair.privateKey;
+                document.getElementById('signature-keypair-result').style.display = 'block';
+            } catch (error) {
+                alert(`签名密钥对生成失败: ${error.message}`);
+            }
+        });
+
+        document.getElementById('sign-message').addEventListener('click', async () => {
+            try {
+                const message = document.getElementById('signature-message').value;
+                const privateKey = document.getElementById('signature-private-key-input').value;
+                
+                if (!message || !privateKey) {
+                    throw new Error('请输入消息和私钥');
+                }
+                
+                const digest = await SignatureUtils.digest(message);
+                const signature = await SignatureUtils.sign(message, privateKey);
+                
+                document.getElementById('message-digest').textContent = digest;
+                document.getElementById('signature-value').textContent = signature;
+                showResult('signature-result');
+            } catch (error) {
+                document.getElementById('message-digest').textContent = '';
+                document.getElementById('signature-value').textContent = `错误: ${error.message}`;
+                showResult('signature-result', false);
+            }
+        });
+
+        document.getElementById('verify-signature-btn').addEventListener('click', async () => {
+            try {
+                const message = document.getElementById('verify-message').value;
+                const signature = document.getElementById('verify-signature').value;
+                const publicKey = document.getElementById('verify-public-key').value;
+                
+                if (!message || !signature || !publicKey) {
+                    throw new Error('请输入消息、签名和公钥');
+                }
+                
+                const result = await SignatureUtils.verify(message, signature, publicKey);
+                
+                document.getElementById('verify-result-value').textContent = result ? '签名有效 ✓' : '签名无效 ✗';
+                showResult('verify-result', result);
+            } catch (error) {
+                document.getElementById('verify-result-value').textContent = `错误: ${error.message}`;
+                showResult('verify-result', false);
+            }
+        });
+
+        // 页面加载时自动生成AES密钥
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('generate-aes-key').click();
+        });
+    </script>
+</body>
+</html> 

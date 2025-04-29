@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS攻击防御 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>XSS攻击防御</h1>
+        <p>跨站脚本攻击的防御策略与实践</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>什么是XSS攻击？</h2>
+            <p>XSS（Cross-Site Scripting）跨站脚本攻击是一种常见的Web应用程序漏洞，攻击者利用这种漏洞在网页上注入恶意客户端代码。当用户浏览包含此类恶意代码的页面时，脚本将在用户的浏览器上执行，使攻击者能够窃取用户数据、会话令牌或在用户不知情的情况下执行恶意操作。</p>
+            
+            <h2>XSS攻击的类型</h2>
+            <ul>
+                <li><strong>反射型XSS（Reflected XSS）</strong>：恶意代码从请求URL中反射到网页上。</li>
+                <li><strong>存储型XSS（Stored XSS）</strong>：恶意代码被存储在服务器上（如数据库），当用户访问相关页面时执行。</li>
+                <li><strong>DOM型XSS（DOM-based XSS）</strong>：漏洞存在于客户端代码中，攻击者修改了页面的DOM环境。</li>
+            </ul>
+            
+            <h2>防御XSS的策略</h2>
+            <ul>
+                <li><strong>输入验证与过滤</strong>：校验用户输入内容，过滤特殊字符。</li>
+                <li><strong>输出编码</strong>：对输出到HTML、JavaScript、CSS和URL的数据进行适当编码。</li>
+                <li><strong>使用安全API</strong>：使用安全的DOM API如textContent而非innerHTML。</li>
+                <li><strong>CSP策略</strong>：实施内容安全策略限制脚本来源和执行。</li>
+                <li><strong>HttpOnly Cookie</strong>：设置HttpOnly标记防止JavaScript访问Cookie。</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>XSS防御示例</h2>
+            
+            <div class="demo-container">
+                <h3>示例1：不安全的实现与安全的实现对比</h3>
+                <div>
+                    <p>输入一段文字（尝试输入 &lt;script&gt;alert('XSS')&lt;/script&gt;）：</p>
+                    <input type="text" id="userInput" placeholder="输入内容..." style="width: 100%; padding: 8px; margin: 10px 0;">
+                    <button id="showUnsafe">不安全显示</button>
+                    <button id="showSafe">安全显示</button>
+                    <div style="margin-top: 15px;">
+                        <h4>不安全输出结果：</h4>
+                        <div id="unsafeOutput" style="border: 1px solid #e74c3c; padding: 10px; background-color: #fadbd8;"></div>
+                        <h4>安全输出结果：</h4>
+                        <div id="safeOutput" style="border: 1px solid #2ecc71; padding: 10px; background-color: #d5f5e3;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>代码实现</h3>
+            <pre><code>// 不安全的实现（容易遭受XSS攻击）
+function displayUnsafeContent(content) {
+    document.getElementById('unsafeOutput').innerHTML = content;
+}
+
+// 安全的实现（防御XSS攻击）
+function displaySafeContent(content) {
+    // 方法一：使用textContent（最安全，但不允许任何HTML标签）
+    document.getElementById('safeOutput').textContent = content;
+    
+    // 方法二：使用HTML转义函数
+    // document.getElementById('safeOutput').innerHTML = escapeHTML(content);
+}
+
+// HTML转义函数
+function escapeHTML(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}</code></pre>
+            
+            <div class="demo-container">
+                <h3>示例2：安全的富文本编辑器</h3>
+                <p>通过白名单过滤HTML标签的富文本输入：</p>
+                <textarea id="richText" style="width: 100%; height: 100px; padding: 8px; margin: 10px 0;" placeholder="输入HTML内容，如：<b>粗体</b> <i>斜体</i>"></textarea>
+                <button id="showSafeHtml">安全显示HTML</button>
+                <div style="margin-top: 15px;">
+                    <h4>过滤后输出：</h4>
+                    <div id="safeHtmlOutput" style="border: 1px solid #3498db; padding: 10px; background-color: #ebf5fb;"></div>
+                </div>
+            </div>
+            
+            <h3>代码实现</h3>
+            <pre><code>// 安全的HTML白名单过滤函数
+function sanitizeHTML(html) {
+    // 创建一个临时元素
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // 移除所有脚本元素
+    const scripts = temp.querySelectorAll('script');
+    scripts.forEach(script => script.remove());
+    
+    // 移除所有事件处理属性
+    const allElements = temp.getElementsByTagName('*');
+    for (let i = 0; i < allElements.length; i++) {
+        const element = allElements[i];
+        // 移除所有以'on'开头的属性（如onclick, onmouseover等）
+        const attributes = element.attributes;
+        for (let j = attributes.length - 1; j >= 0; j--) {
+            const attrName = attributes[j].name;
+            if (attrName.startsWith('on') || attrName === 'href' && attributes[j].value.startsWith('javascript:')) {
+                element.removeAttribute(attrName);
+            }
+        }
+    }
+    
+    return temp.innerHTML;
+}</code></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/xss-protection.js"></script>
+</body>
+</html> 

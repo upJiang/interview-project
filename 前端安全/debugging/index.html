@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防调试与代码保护 - 前端安全项目</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header>
+        <h1>防调试与代码保护</h1>
+        <p>保护前端代码不被恶意分析和调试的技术</p>
+    </header>
+
+    <main class="container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="content">
+            <h2>为什么要防止调试？</h2>
+            <p>前端代码天然可以被用户查看和分析，但在某些场景下，我们需要增加代码被分析和调试的难度：</p>
+            <ul>
+                <li>保护业务逻辑和算法</li>
+                <li>防止接口滥用和自动化攻击</li>
+                <li>防止绕过客户端验证</li>
+                <li>保护付费内容和知识产权</li>
+                <li>降低恶意篡改的可能性</li>
+            </ul>
+            
+            <h2>常见的防调试技术</h2>
+            <ul>
+                <li><strong>DevTools检测</strong>：检测开发者工具是否打开</li>
+                <li><strong>调试器陷阱</strong>：使用debugger语句创建调试障碍</li>
+                <li><strong>控制台覆盖</strong>：重写console方法限制日志信息</li>
+                <li><strong>代码混淆</strong>：使用工具混淆代码以增加理解难度</li>
+                <li><strong>自检查</strong>：定期检查代码是否被修改</li>
+                <li><strong>环境检测</strong>：检测是否在模拟或调试环境中运行</li>
+            </ul>
+            
+            <h2>代码保护最佳实践</h2>
+            <ul>
+                <li><strong>服务器验证</strong>：关键逻辑应在服务器端实现</li>
+                <li><strong>多层防护</strong>：组合多种技术，不依赖单一方法</li>
+                <li><strong>安全更新</strong>：定期更新保护策略</li>
+                <li><strong>加密通信</strong>：使用HTTPS并加密敏感数据</li>
+                <li><strong>权衡体验</strong>：防调试措施不应过度影响正常用户</li>
+            </ul>
+        </div>
+        
+        <div class="content">
+            <h2>防调试演示</h2>
+            
+            <div class="demo-container">
+                <h3>示例1：DevTools检测</h3>
+                <p>这个示例会检测开发者工具是否打开，并相应地改变行为。</p>
+                <div class="demo-box">
+                    <div id="devtools-status">DevTools状态：正在检测...</div>
+                    <div id="protected-content" style="display: none; margin-top: 15px; padding: 10px; border: 1px solid #3498db; background-color: #ebf5fb;">
+                        这是受保护的内容，只有在没有打开开发者工具的情况下才会显示。
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-container">
+                <h3>示例2：调试器陷阱</h3>
+                <p>点击下面的按钮将触发一个调试器陷阱，使调试变得困难。</p>
+                <button id="debugger-trap-btn">触发调试器陷阱</button>
+                <div id="trap-result" style="margin-top: 10px;"></div>
+            </div>
+            
+            <h3>代码实现片段</h3>
+            <pre><code>// 检测开发者工具是否打开
+function detectDevTools() {
+    const threshold = 160; // 阈值可以根据需要调整
+    
+    // 方法1: 窗口大小监测法
+    const devtoolsOpen = window.outerWidth - window.innerWidth > threshold || 
+                        window.outerHeight - window.innerHeight > threshold;
+                        
+    // 方法2: 控制台对象监测
+    const devtoolsExplicit = window.Firebug && 
+                           window.Firebug.chrome && 
+                           window.Firebug.chrome.isInitialized || 
+                           /Chrome\/\d+/.test(navigator.userAgent) && 
+                           /Google Inc/.test(navigator.vendor) && 
+                           window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    
+    return devtoolsOpen || devtoolsExplicit || false;
+}
+
+// 创建调试器陷阱
+function createDebuggerTrap() {
+    // 基本的调试器陷阱
+    setInterval(function() {
+        debugger; // 当开发者工具打开时，这会不断触发断点
+    }, 100);
+    
+    // 更复杂的调试器陷阱（真实生产环境中会更复杂）
+    (function antiDebug(){
+        function debug(){
+            debugger;
+        }
+        debug(); // 调用一次
+        
+        // 混淆函数并延迟执行
+        setTimeout(function() { 
+            const startTime = performance.now();
+            debug();
+            const endTime = performance.now();
+            
+            // 如果debugger语句暂停的时间超过阈值，说明有人在调试
+            if (endTime - startTime > 100) {
+                // 触发反调试措施
+                antiDebug();
+            }
+        }, Math.random() * 1000 + 500);
+    })();
+}
+
+// 控制台覆盖方法
+function overrideConsole() {
+    const noop = function(){};
+    const methods = ['log', 'debug', 'info', 'warn', 'error', 'dir', 'trace'];
+    
+    const originalConsole = {...console};
+    
+    // 保存原始方法
+    window._originalConsole = originalConsole;
+    
+    // 重写方法
+    methods.forEach(method => {
+        console[method] = noop;
+    });
+    
+    // 额外增加一个监控函数，记录使用控制台的尝试
+    console = new Proxy(console, {
+        get: function(target, prop) {
+            if (methods.includes(prop)) {
+                // 可以在这里记录尝试使用控制台的行为
+                // 例如发送到服务器或执行其他防护措施
+                return noop;
+            }
+            return target[prop];
+        }
+    });
+}
+
+// 代码自检查
+function selfCheckCode() {
+    const criticalFunction = function(a, b) { 
+        return a * b + a; 
+    };
+    
+    // 计算函数字符串的哈希值（简化示例，实际应使用更强的哈希）
+    const originalHash = "预先计算的哈希值";
+    const currentFunctionString = criticalFunction.toString();
+    
+    // 简单的字符串哈希函数
+    function simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // 转换为32位整数
+        }
+        return hash.toString(16);
+    }
+    
+    // 检查函数是否被修改
+    const currentHash = simpleHash(currentFunctionString);
+    if (currentHash !== originalHash) {
+        // 检测到代码被修改，执行保护措施
+        console.error("代码完整性被破坏");
+        // 其他防护措施...
+    }
+}</code></pre>
+        </div>
+    </main>
+
+    <footer>
+        <p>前端安全项目 &copy; 2023</p>
+    </footer>
+
+    <script src="js/anti-debugging.js"></script>
+</body>
+</html> 
