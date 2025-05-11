@@ -5,3 +5,6 @@ vite-demo/node_modules
 websocket-demo/node_modules
 webpack-demo/node_modules  
 renderOpt/node_modules
+fileUpload-demo/server/node_modules
+fileUpload-demo/client/node_modules
+fileUpload-demo/server/uploads

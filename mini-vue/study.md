@@ -286,6 +286,24 @@ A4:
 
 A5: effect是Vue3响应式系统的核心，用于注册副作用函数。当依赖的响应式数据变化时，副作用函数会自动执行。在Vue3中，组件的渲染函数、计算属性、侦听器等都是通过effect实现的。effect会在首次执行时收集依赖，并在依赖变化时重新执行。
 
+#### Q6: Vue3的diff算法有哪些优化？
+
+A6: Vue3采用了全新的快速diff算法，相比Vue2主要有以下几个优化点：
+
+1. **静态节点提升(Static Hoisting)**：将静态节点在编译阶段提升到render函数外，避免每次渲染时重新创建，大幅减少了内存占用和垃圾回收的压力。
+
+2. **静态属性提升(Static Props Hoisting)**：类似静态节点提升，静态属性也被提升，减少了不必要的比较和更新。
+
+3. **片段(Fragments)**：Vue3支持多根节点组件，减少了不必要的DOM层级。
+
+4. **动态子节点序列追踪**：Vue3引入了一种基于最长递增子序列的算法，高效地定位需要移动的节点，尽可能复用DOM元素。
+
+5. **PatchFlag机制**：在编译阶段标记动态内容的类型（如文本、props等），运行时只需关注带有标记的节点，大大减少了比对范围。
+
+6. **Block树结构**：Block是一个包含动态子节点的树形结构，使diff算法只关注动态节点，跳过静态内容，显著提高了性能。
+
+综上，Vue3的diff算法主要专注于"找到并只更新变化的部分"，通过编译时优化和运行时的精确更新，使渲染性能有了质的飞跃。
+
 ## 七、总结
 
 Vue3的响应式系统是其最核心的特性之一，通过Proxy API和精心设计的依赖追踪机制，实现了高效、灵活的响应式数据处理。理解响应式原理对于深入使用Vue3、优化应用性能以及应对面试都有重要帮助。
@@ -317,3 +335,278 @@ Vue3的响应式系统是其最核心的特性之一，通过Proxy API和精心�
    - 视图更新完成
 
 `effect`是整个流程的核心枢纽，通过闭包和全局`activeEffect`变量，巧妙地连接了数据变化与视图更新。
+
+## 九、Vue3 Diff算法详解
+
+Vue3的diff算法是整个渲染系统的核心，它极大地提高了虚拟DOM比对和更新的效率。以下是Vue3 diff算法的详细解析：
+
+### 1. PatchFlag标记机制
+
+PatchFlag是Vue3编译器为动态内容添加的标记，它使运行时能够精确定位需要更新的部分。
+
+```javascript
+// Vue3编译后的渲染函数示例
+function render() {
+  return createVNode("div", null, [
+    createVNode("p", null, "静态文本", PatchFlags.STABLE_FRAGMENT),
+    createVNode("p", null, ctx.message, PatchFlags.TEXT) // 标记为动态文本
+  ]);
+}
+```
+
+PatchFlag枚举值示例：
+
+```javascript
+export const enum PatchFlags {
+  TEXT = 1,          // 动态文本节点
+  CLASS = 2,         // 动态class
+  STYLE = 4,         // 动态style
+  PROPS = 8,         // 动态属性
+  FULL_PROPS = 16,   // 动态key属性
+  HYDRATE_EVENTS = 32, // 需要被动态绑定的事件
+  STABLE_FRAGMENT = 64, // 稳定序列，子节点顺序不会发生变化
+  KEYED_FRAGMENT = 128, // 带key的Fragment
+  UNKEYED_FRAGMENT = 256, // 无key的Fragment
+  NEED_PATCH = 512,  // 非props需要patch
+  DYNAMIC_SLOTS = 1024, // 动态插槽
+  HOISTED = -1,      // 静态节点，被提升
+  BAIL = -2          // 表示diff算法应该结束优化模式
+}
+```
+
+### 2. 静态提升(Static Hoisting)
+
+在Vue3中，编译器会识别并提升静态节点和静态属性，避免在每次渲染时重新创建它们：
+
+```javascript
+// 静态提升示例
+// 被提升的静态节点 - 只创建一次
+const _hoisted_1 = createVNode("div", { class: "static" }, "静态内容");
+
+// 渲染函数
+function render() {
+  return createVNode("div", null, [
+    _hoisted_1, // 复用已创建的静态节点
+    createVNode("p", null, ctx.message, 1 /* TEXT */)
+  ]);
+}
+```
+
+### 3. Block树结构
+
+Block是Vue3中的一个重要概念，它是一个包含动态子节点的树结构。通过Block，Vue3可以直接追踪动态节点，而不需要遍历整棵树：
+
+```javascript
+// Block示例
+function renderBlock() {
+  // 创建一个block
+  const block = openBlock();
+  
+  // Block内部的动态节点会被收集到block.dynamicChildren数组中
+  return createBlock('div', null, [
+    createVNode('p', null, '静态文本'),
+    createVNode('p', null, ctx.text, PatchFlags.TEXT),
+    createVNode('p', { style: ctx.style }, null, PatchFlags.STYLE)
+  ]);
+}
+
+// 更新时只需要遍历block.dynamicChildren数组中的节点
+function patchBlockChildren(oldBlock, newBlock) {
+  for (let i = 0; i < newBlock.dynamicChildren.length; i++) {
+    patchElement(
+      oldBlock.dynamicChildren[i], 
+      newBlock.dynamicChildren[i]
+    );
+  }
+}
+```
+
+### 4. 最长递增子序列算法(最优移动序列)
+
+Vue3使用最长递增子序列算法优化节点移动。这个算法用于找出一个序列中最长的单调递增子序列，从而最小化DOM移动操作：
+
+```javascript
+function updateChildren(oldChildren, newChildren) {
+  // 前置和后置节点的优化处理...
+  
+  // 对剩余的未处理节点应用最长递增子序列算法
+  const increasingNewIndexSequence = getSequence(newIndexToOldIndexMap);
+  let j = increasingNewIndexSequence.length - 1;
+  
+  // 从后向前遍历，以减少DOM操作
+  for (let i = toBePatched - 1; i >= 0; i--) {
+    const nextIndex = s2 + i;
+    const nextChild = newChildren[nextIndex];
+    
+    // 确定插入锚点
+    const anchor = nextIndex + 1 < newChildren.length 
+      ? newChildren[nextIndex + 1].el 
+      : null;
+    
+    if (newIndexToOldIndexMap[i] === 0) {
+      // 新节点，需要挂载
+      patch(null, nextChild, container, anchor);
+    } else {
+      // 更新节点
+      // 如果不是最长递增子序列中的节点，需要移动位置
+      if (j < 0 || i !== increasingNewIndexSequence[j]) {
+        move(nextChild, container, anchor);
+      } else {
+        // 是最长递增子序列中的节点，位置不变
+        j--;
+      }
+    }
+  }
+}
+
+// 获取最长递增子序列函数
+function getSequence(arr) {
+  const p = arr.slice();
+  const result = [0];
+  let i, j, u, v, c;
+  const len = arr.length;
+  
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i];
+    if (arrI !== 0) {
+      j = result[result.length - 1];
+      if (arr[j] < arrI) {
+        p[i] = j;
+        result.push(i);
+        continue;
+      }
+      
+      u = 0;
+      v = result.length - 1;
+      
+      while (u < v) {
+        c = (u + v) >> 1;
+        if (arr[result[c]] < arrI) {
+          u = c + 1;
+        } else {
+          v = c;
+        }
+      }
+      
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1];
+        }
+        result[u] = i;
+      }
+    }
+  }
+  
+  u = result.length;
+  v = result[u - 1];
+  
+  while (u-- > 0) {
+    result[u] = v;
+    v = p[v];
+  }
+  
+  return result;
+}
+```
+
+### 5. 整体Diff流程
+
+Vue3的Diff算法整体流程可以简化为以下步骤：
+
+1. **同节点类型判断**：首先判断新旧节点是否为同一类型，不同类型直接替换。
+
+2. **快速路径**：针对不同类型的节点采用不同的更新策略
+   - 文本节点：直接更新文本内容
+   - 静态节点：无需更新
+   - Fragment：更新子节点
+
+3. **子节点Diff**：
+   - 根据PatchFlag进行针对性更新
+   - 如果是Block，只对dynamicChildren进行Diff
+   - 如果存在key，使用key优化子节点比对过程
+
+4. **特殊处理**：
+   - 前置/后置节点优化：相同前缀和后缀快速判断
+   - 同位置更新：位置相同的节点直接更新，不移动
+   - 新增节点挂载，多余节点卸载
+   - 使用最长递增子序列算法最小化移动
+
+```javascript
+// 简化的patch函数
+function patch(n1, n2, container, anchor) {
+  // n1为旧节点，n2为新节点
+  
+  // 不同类型节点直接替换
+  if (n1 && !isSameVNodeType(n1, n2)) {
+    unmount(n1);
+    n1 = null;
+  }
+  
+  const { type, shapeFlag } = n2;
+  
+  switch (type) {
+    case Text:
+      processText(n1, n2, container, anchor);
+      break;
+    case Comment:
+      processComment(n1, n2, container, anchor);
+      break;
+    case Fragment:
+      processFragment(n1, n2, container, anchor);
+      break;
+    default:
+      if (shapeFlag & ShapeFlags.ELEMENT) {
+        processElement(n1, n2, container, anchor);
+      } else if (shapeFlag & ShapeFlags.COMPONENT) {
+        processComponent(n1, n2, container, anchor);
+      }
+  }
+}
+
+// 元素更新函数
+function processElement(n1, n2, container, anchor) {
+  if (n1 == null) {
+    // 挂载新元素
+    mountElement(n2, container, anchor);
+  } else {
+    // 更新元素
+    patchElement(n1, n2);
+  }
+}
+
+// 元素更新
+function patchElement(n1, n2) {
+  const el = (n2.el = n1.el);
+  const oldProps = n1.props || {};
+  const newProps = n2.props || {};
+  
+  // 更新子节点
+  patchChildren(n1, n2, el);
+    
+  // 根据PatchFlag更新属性
+  if (n2.patchFlag > 0) {
+    if (n2.patchFlag & PatchFlags.FULL_PROPS) {
+      // 全量更新props
+      patchProps(el, n2, oldProps, newProps);
+    } else {
+      // 只更新动态属性
+      if (n2.patchFlag & PatchFlags.STYLE) {
+        patchStyle(el, oldProps.style, newProps.style);
+      }
+      if (n2.patchFlag & PatchFlags.CLASS) {
+        patchClass(el, n2.props && n2.props.class);
+      }
+      // 其他PatchFlags处理...
+    }
+  } else {
+    // 无PatchFlag时全量比对
+    patchProps(el, n2, oldProps, newProps);
+  }
+}
+```
+
+### 总结
+
+Vue3的diff算法通过编译时的静态分析和运行时的精确更新策略，大幅提高了渲染性能。相比Vue2，Vue3的diff算法专注于"跳过静态内容，只更新动态内容"的思想，为复杂应用的性能优化提供了坚实的基础。
+
+通过PatchFlag、Block树、静态提升和最长递增子序列等创新技术，Vue3将比对过程的时间复杂度从O(n^3)降低到接近O(n)，这使得Vue3在处理大型、复杂的视图时表现出色。
