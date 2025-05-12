@@ -16,16 +16,20 @@ function bfsQueue(root) {
 //   二叉树的广度优先遍历
 function BFS(root) {
   const queue = [root];
+  const result = [];
   while (queue.length) {
     const top = queue[0];
-
+    result.push(top.val);
     if (top.left) {
       queue.push(top.left);
+      result.push(top.left.val);
     }
     if (top.right) {
       queue.push(top.right);
+      result.push(top.right.val);
     }
 
     queue.shift();
   }
+  return result;
 }

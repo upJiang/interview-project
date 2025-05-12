@@ -19,6 +19,7 @@
 13. [框架级性能优化 (Vue/React)](#13-框架级性能优化-vuereact)
 14. [打包与构建优化](#14-打包与构建优化)
 15. [性能优化面试题](#15-性能优化面试题)
+16. [如何定位和解决页面卡顿白屏问题](#16-如何定位和解决页面卡顿白屏问题)
 
 ## 1. 关键渲染路径优化
 
@@ -1782,6 +1783,76 @@ const routes = [
 const Dashboard = React.lazy(() => import('./Dashboard'));
 ```
 
+##### 路由懒加载实现原理
+
+路由懒加载的核心实现原理基于以下几个关键技术点：
+
+1. **动态import()机制**：
+   - ES2020标准的动态import()返回Promise，允许按需加载JavaScript模块
+   - 当路由匹配时才执行import()，而不是在应用初始化时加载所有组件
+   - 这将组件的加载从应用启动阶段延迟到实际需要该组件时
+
+2. **构建工具的代码分割**：
+   - 当Webpack/Vite等构建工具遇到import()语法时，会自动进行代码分割
+   - 将动态导入的模块打包为独立的chunk文件（如vendors-abc123.js, dashboard-def456.js）
+   - 每个chunk都有唯一的hash值，便于缓存控制
+
+3. **懒加载实现流程**：
+   - 初始化：路由配置中的component被定义为返回Promise的函数
+   - 路由匹配：用户访问特定路由时，路由库检测到匹配
+   - 组件请求：调用对应的import()函数，发起网络请求获取chunk
+   - 解析组件：加载完成后，Promise解析为组件定义
+   - 渲染组件：将解析后的组件渲染到路由出口
+
+4. **预加载优化策略**：
+   - 路由预加载：当用户hover或即将访问某路由时提前加载
+   - 空闲时间预加载：使用requestIdleCallback在浏览器空闲时加载可能需要的路由
+
+5. **框架特定实现**：
+   - Vue Router：将component定义为返回import()的函数，内部处理异步组件加载状态
+   - React Router：通常结合React.lazy和Suspense，实现加载状态和错误边界处理
+
+```javascript
+// Vue Router中更完整的懒加载实现
+const routes = [
+  {
+    path: '/dashboard',
+    component: () => import('./views/Dashboard.vue'),
+    // 指定加载中和加载失败的组件
+    loading: LoadingComponent,
+    error: ErrorComponent,
+    // 延迟展示加载组件的时间（ms）
+    delay: 200,
+    // 加载失败后自动重试
+    retry: 3
+  }
+];
+
+// React Router中结合Suspense的实现
+import { Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+const Dashboard = React.lazy(() => import('./Dashboard'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+```
+
+通过路由懒加载，可以实现以下优化效果：
+- 减小初始加载体积，加快首屏渲染速度
+- 按需加载资源，避免加载用户可能不访问的页面
+- 更有效地利用浏览器缓存
+- 改善大型应用的性能和用户体验
+
 #### 13.3.2 服务端渲染(SSR)
 
 服务端渲染可以显著提升首屏加载速度，改善SEO：
@@ -1807,7 +1878,7 @@ import App from './App';
 const html = ReactDOMServer.renderToString(<App />);
 ```
 
-#### 13.3.3 预渲染与静态站点生成
+### 13.3.3 预渲染与静态站点生成
 
 对于内容不经常变化的页面，可以使用预渲染或静态站点生成：
 
@@ -1847,7 +1918,7 @@ function HomePage({ data }) {
 }
 ```
 
-#### 13.3.4 WebWorker卸载计算密集型任务
+### 13.3.4 WebWorker卸载计算密集型任务
 
 ```javascript
 // 主线程
@@ -2865,130 +2936,582 @@ webpack打包优化关键措施：
    - A/B测试性能改进效果
    - 监控并预防性能退化
 
-## 前端性能指标实际优化手段
+## 16. 如何定位和解决页面卡顿白屏问题
 
-在前端开发中，优化关键性能指标对提升用户体验至关重要。下面详细介绍针对各项性能指标的具体优化方法：
+页面卡顿和白屏是影响用户体验的严重问题，有效定位和解决这些问题对于提升应用质量至关重要。本章将从定位和解决两个角度详细探讨如何应对这些常见性能问题。
 
-### 1. LCP (最大内容绘制) 优化
+### 16.1 如何定位页面卡顿和白屏问题
 
-LCP衡量视口内最大内容元素的加载时间，通常是主图、大型文本块或视频。
+#### 16.1.1 性能监控工具
 
-**优化手段**：
-- **预加载关键资源**：使用`<link rel="preload">`预加载hero图片和字体
-- **优化图片加载**：使用WebP格式、响应式图片、合理压缩
-- **实现渐进式图片**：让图片先以低质量显示，再逐渐清晰
-- **移除不必要的第三方脚本**：减少与主要内容竞争的资源
-- **使用CDN**：将静态资源分发到离用户更近的服务器
-- **服务端渲染**：直接发送渲染好的HTML，减少客户端渲染时间
-- **字体优化**：使用`font-display: swap`，预加载关键字体
-- **减少CSS阻塞**：内联关键CSS，异步加载非关键CSS
+**Chrome DevTools Performance 面板**
 
-### 2. FID (首次输入延迟) 优化
+```javascript
+// 在代码中添加性能标记，帮助在Performance面板中定位问题
+performance.mark('操作开始');
+// 执行可能导致卡顿的操作
+complexOperation();
+performance.mark('操作结束');
+performance.measure('操作耗时', '操作开始', '操作结束');
+```
 
-FID测量用户首次与页面交互到浏览器实际响应的时间。
+**原理**：通过记录页面加载和交互过程中的各种事件，可以直观地看到JavaScript执行、布局计算、绘制等各环节的耗时，识别出长任务和性能瓶颈。
 
-**优化手段**：
-- **拆分长任务**：将大型JavaScript任务拆分为小于50ms的小任务
-- **延迟非关键JavaScript**：使用`defer`或`async`属性
-- **使用Web Workers**：将复杂计算移到后台线程
-- **优化事件监听器**：减少不必要的事件监听，使用事件代理
-- **优化第三方代码**：评估并移除不必要的第三方脚本
-- **使用`requestIdleCallback`**：在浏览器空闲时执行非关键任务
-- **实现懒加载和代码拆分**：只加载当前需要的JavaScript
-- **避免大型内联脚本**：大型内联脚本会阻塞主线程
+**Lighthouse 自动化分析**
 
-### 3. CLS (累积布局偏移) 优化
+```bash
+# 使用命令行运行Lighthouse分析
+lighthouse https://example.com --output json --output-path ./report.json
+```
 
-CLS测量页面加载过程中元素意外移动的情况。
+**原理**：Lighthouse自动执行一系列性能测试，生成综合报告，包含多个性能指标和具体改进建议。
 
-**优化手段**：
-- **为图片和视频设置尺寸属性**：明确指定width和height属性
-- **避免无尺寸广告和嵌入内容**：为嵌入内容预留固定空间
-- **使用CSS容器查询**：更灵活地适应不同容器大小
-- **优先加载关键内容**：先加载视口内的内容再加载视口外的内容
-- **使用骨架屏**：预先占位，减少内容加载时的偏移
-- **避免在已加载的内容前插入内容**：新内容应添加到底部
-- **避免动态修改DOM**：减少可能导致偏移的操作
-- **使用transform动画**：使用transform代替修改位置属性
+#### 16.1.2 前端监控系统实现
 
-### 4. FCP (首次内容绘制) 优化
+**实时错误和性能监控**
 
-FCP记录浏览器首次渲染DOM内容的时间点。
+```javascript
+class PerformanceMonitor {
+  constructor() {
+    this.initPerformanceObservers();
+    this.monitorJSErrors();
+    this.detectLongTasks();
+    this.detectWhiteScreens();
+  }
+  
+  initPerformanceObservers() {
+    // 监控关键渲染指标
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      entries.forEach(entry => {
+        // 上报性能数据
+        this.reportPerformanceMetric(entry);
+      });
+    });
+    observer.observe({entryTypes: ['paint', 'largest-contentful-paint', 'layout-shift']});
+  }
+  
+  detectLongTasks() {
+    // 检测长任务（超过50ms的任务）
+    const longTaskObserver = new PerformanceObserver((list) => {
+      list.getEntries().forEach(entry => {
+        console.warn(`检测到长任务: ${entry.duration}ms`);
+        this.reportLongTask({
+          duration: entry.duration,
+          startTime: entry.startTime,
+          attribution: entry.attribution
+        });
+      });
+    });
+    longTaskObserver.observe({entryTypes: ['longtask']});
+  }
+  
+  detectWhiteScreens() {
+    // 白屏检测：检查DOM内容是否为空或极少
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const contentElements = document.body.querySelectorAll('div, p, img, table');
+        if (contentElements.length < 5) { // 如果内容元素太少，可能是白屏
+          this.reportPossibleWhiteScreen();
+        }
+      }, 3000); // 给予足够的加载时间
+    });
+    
+    // FP/FCP超时检测
+    setTimeout(() => {
+      const paintEntries = performance.getEntriesByType('paint');
+      if (paintEntries.length === 0) {
+        this.reportPossibleWhiteScreen('没有绘制事件，可能完全白屏');
+      }
+    }, 5000);
+  }
+  
+  monitorJSErrors() {
+    window.addEventListener('error', (event) => {
+      this.reportError({
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack
+      });
+    });
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      this.reportError({
+        type: 'unhandledrejection',
+        reason: event.reason?.stack || String(event.reason)
+      });
+    });
+  }
+  
+  // 上报方法省略...
+}
 
-**优化手段**：
-- **消除渲染阻塞资源**：内联关键CSS，延迟加载非关键CSS
-- **减少服务器响应时间**：优化服务器配置，使用缓存
-- **避免多次重定向**：减少页面跳转次数
-- **压缩文本资源**：使用Gzip或Brotli压缩
-- **使用HTTP/2或HTTP/3**：支持多路复用，减少连接开销
-- **优化关键渲染路径**：减少关键资源数量和大小
-- **使用服务器端渲染**：提供预渲染的HTML内容
-- **实现资源优先级提示**：使用`rel="preconnect"`和`rel="dns-prefetch"`
+// 初始化监控
+const monitor = new PerformanceMonitor();
+```
 
-### 5. TTI (可交互时间) 优化
+**原理**：通过多种监控技术实时检测性能异常，包括长任务、绘制延迟和JavaScript错误，从而精确定位卡顿和白屏的原因。
 
-TTI测量页面变得完全可交互所需的时间。
+#### 16.1.3 特定问题定位方法
 
-**优化手段**：
-- **按需加载组件**：实现代码拆分，延迟加载非关键组件
-- **减少JavaScript执行时间**：优化和压缩JavaScript代码
-- **延迟加载第三方脚本**：非关键第三方脚本可以延迟加载
-- **优化组件初始化**：减少框架和组件的初始化时间
-- **实现渐进式渲染**：先渲染骨架，再填充内容
-- **使用`Intersection Observer`**：高效监测元素可见性
-- **删除未使用代码**：使用Tree Shaking移除死代码
-- **使用代码优化和缓存**：利用ServiceWorker缓存资源
+**白屏问题定位**
 
-### 6. TBT (总阻塞时间) 优化
+1. **检查网络请求**：通过Network面板分析资源加载情况，查看是否存在关键资源加载失败
+2. **控制台错误分析**：检查Console面板中的错误信息，特别是JavaScript运行时错误
+3. **渲染过程分析**：查看Performance面板中的渲染时间线，找出阻塞渲染的因素
+4. **使用降级测试**：禁用JavaScript后观察页面状态，判断白屏是否由JavaScript错误引起
+   - **如何禁用JavaScript**：
+     - 在Chrome中：打开DevTools（F12或Ctrl+Shift+I）→ 点击"Settings"（⚙️图标）→ 在左侧选择"Debugger"或"Preferences" → 勾选"Disable JavaScript"
+     - 在Firefox中：地址栏输入"about:config" → 搜索"javascript.enabled" → 双击将值设为false
+     - 使用浏览器插件：如Chrome的"JavaScript Switcher"或"Quick JavaScript Switcher"
+     - 通过命令行启动浏览器：如`chrome --disable-javascript`
+   - 禁用JavaScript后，如果页面仍然白屏，则问题可能出在HTML/CSS层面；如果页面能够正常显示静态内容，则问题很可能是JavaScript执行错误导致
+5. **检查HTML结构**：使用Elements面板检查DOM结构，查看关键内容是否正确渲染
+6. **服务端资源检查**：白屏问题可能是服务端资源被替换或修改导致的
+   - **检查资源完整性**：
+     - 使用Network面板检查关键资源(JS/CSS)的HTTP状态码、响应内容和大小是否正常
+     - 比对资源内容的哈希值或版本号，确认是否为预期版本
+     - 检查资源MIME类型是否正确，特别是`.js`文件是否返回`application/javascript`
+   - **API响应分析**：
+     - 使用Network面板检查API响应，数据结构是否符合前端预期
+     - 使用Postman或curl等工具直接请求API，验证响应与前端接收到的是否一致
+   - **CORS和安全策略问题**：
+     - 检查资源是否有跨域问题，查看响应头中的`Access-Control-Allow-Origin`等字段
+     - 针对HTTPS站点，检查是否存在混合内容(mixed content)问题
+   - **CDN缓存问题**：
+     - 通过添加时间戳参数(如`?v=timestamp`)方式强制刷新CDN缓存
+     - 使用不同网络(如手机网络、VPN)访问，验证是否为CDN节点缓存问题
+   - **服务端错误日志查询**：
+     - 查看服务器错误日志，寻找资源请求失败的原因
+     - 检查服务端是否有资源路径变更但未同步到前端代码的情况
 
-TBT衡量FCP和TTI之间主线程被阻塞的总时间。
+**卡顿问题定位**
 
-**优化手段**：
-- **减少主线程工作**：将非UI操作移至Web Worker
-- **优化JavaScript执行**：减少和优化JavaScript的执行
-- **代码拆分**：将大型JavaScript包拆分成更小的块
-- **优化第三方脚本**：延迟加载非关键第三方脚本
-- **避免长任务**：将任务拆分成较小的异步任务
-- **使用异步和延迟执行**：使用Promise和setTimeout延迟执行
-- **优化渲染性能**：减少重排和重绘
-- **延迟隐藏内容的处理**：首先处理可见内容
+1. **记录性能概况**：使用Performance面板记录用户操作过程
+2. **分析长任务**：识别Main部分持续时间超过50ms的任务块
+3. **分析布局抖动**：查看Layout部分是否存在频繁的强制同步布局
+4. **内存分析**：使用Memory面板检查内存泄漏和垃圾回收频率
+5. **帧率分析**：查看FPS图表，找出帧率明显下降的时间点
 
-### 7. TTFB (首字节时间) 优化
+**实例分析**
 
-TTFB测量从用户请求页面到收到第一个字节的时间。
+```javascript
+// 在页面各关键节点添加性能标记
+window.addEventListener('DOMContentLoaded', () => {
+  performance.mark('DOMContentLoaded');
+});
 
-**优化手段**：
-- **优化服务器性能**：提高服务器处理速度
-- **使用CDN**：减少请求到服务器的距离
-- **实现有效的服务器缓存**：使用Redis等缓存解决方案
-- **优化数据库查询**：提高后端数据获取效率
-- **使用HTTP/2或HTTP/3**：提高传输效率
-- **优化DNS解析**：使用DNS预解析，选择快速DNS提供商
-- **减少重定向**：避免不必要的301/302重定向
-- **实现边缘计算**：将计算移至更靠近用户的地方
+window.addEventListener('load', () => {
+  performance.mark('WindowLoaded');
+  
+  // 计算关键阶段耗时
+  performance.measure('DOM处理时间', 'navigationStart', 'DOMContentLoaded');
+  performance.measure('资源加载时间', 'DOMContentLoaded', 'WindowLoaded');
+  
+  // 分析结果
+  const measures = performance.getEntriesByType('measure');
+  measures.forEach(measure => {
+    console.log(`${measure.name}: ${measure.duration.toFixed(2)}ms`);
+    if (measure.duration > 3000) {
+      console.warn(`${measure.name}过长，可能导致白屏`);
+    }
+  });
+});
+```
 
-### 8. FMP (首次有意义绘制) 优化
+### 16.2 如何解决页面卡顿和白屏问题
 
-FMP表示页面主要内容出现在屏幕上的时间点。
+#### 16.2.1 解决白屏问题的策略
 
-**优化手段**：
-- **识别并优先加载主要内容**：确定页面的主要内容并优先加载
-- **实现渐进式渲染**：分批次渲染页面内容
-- **优化关键渲染路径**：减少阻塞渲染的资源
-- **预加载关键资源**：使用`<link rel="preload">`预加载重要资源
-- **优化首屏图片**：优先加载视口内的图片
-- **服务端渲染关键内容**：预渲染主要内容
-- **使用骨架屏**：在内容加载前显示页面结构
-- **减少未使用的CSS**：移除不必要的样式定义
+**优化资源加载**
 
-### 实现综合优化的方法
+```html
+<!-- 预加载关键资源 -->
+<link rel="preload" href="critical.js" as="script">
+<link rel="preload" href="critical.css" as="style">
 
-1. **性能预算**：设定性能目标并持续监控
-2. **优化工作流**：在开发过程中集成性能测试
-3. **性能监控**：实施实时用户监控(RUM)跟踪实际用户体验
-4. **渐进式优化**：先满足最低标准，再逐步增强体验
-5. **A/B测试**：测试不同优化策略的实际效果
-6. **利用现代构建工具**：如Webpack、Vite等实现优化自动化
-7. **持续学习与更新**：跟踪浏览器新特性和最佳实践
+<!-- 预渲染关键内容 -->
+<div id="app">
+  <!-- 服务端渲染的初始内容 -->
+  <div class="header">...</div>
+  <div class="main-content">...</div>
+</div>
 
-通过系统地实施这些优化策略，可以显著提升网站性能，改善用户体验，最终达到业务增长的目标。性能优化应该是一个持续的过程，需要不断监测、分析和改进。 
+<!-- 添加骨架屏 -->
+<style>
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    height: 20px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+</style>
+```
+
+**错误处理与降级方案**
+
+```javascript
+// 为主要JavaScript模块添加错误边界
+try {
+  // 初始化应用
+  initApp();
+} catch (error) {
+  console.error('应用初始化失败', error);
+  // 显示降级UI
+  document.getElementById('fallback-ui').style.display = 'block';
+  // 上报错误
+  reportError(error);
+}
+
+// React错误边界组件
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+  
+  componentDidCatch(error, errorInfo) {
+    reportError(error, errorInfo);
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return <FallbackUI />;
+    }
+    return this.props.children;
+  }
+}
+```
+
+**服务端渲染与静态生成**
+
+```javascript
+// Next.js中实现服务端渲染
+export async function getServerSideProps(context) {
+  try {
+    // 获取初始数据
+    const data = await fetchInitialData();
+    
+    return {
+      props: { data }
+    };
+  } catch (error) {
+    console.error('数据获取失败', error);
+    return {
+      props: { 
+        error: true,
+        errorMessage: error.message 
+      }
+    };
+  }
+}
+
+function ProductPage({ data, error, errorMessage }) {
+  // 处理错误状态
+  if (error) {
+    return <ErrorPage message={errorMessage} />;
+  }
+  
+  return <ProductDisplay data={data} />;
+}
+```
+
+#### 16.2.2 解决卡顿问题的策略
+
+**优化JavaScript执行**
+
+```javascript
+// 拆分长任务
+function processLargeDataSet(items) {
+  // 原始实现 - 可能导致卡顿
+  // items.forEach(item => processItem(item));
+  
+  // 优化实现 - 分批处理
+  return new Promise(resolve => {
+    const total = items.length;
+    const batchSize = 100;
+    let processed = 0;
+    
+    function processNextBatch() {
+      const end = Math.min(processed + batchSize, total);
+      
+      // 处理当前批次
+      for (let i = processed; i < end; i++) {
+        processItem(items[i]);
+      }
+      
+      processed = end;
+      
+      if (processed < total) {
+        // 使用requestAnimationFrame或setTimeout安排下一批处理
+        window.requestIdleCallback 
+          ? window.requestIdleCallback(processNextBatch)
+          : setTimeout(processNextBatch, 1);
+      } else {
+        resolve();
+      }
+    }
+    
+    processNextBatch();
+  });
+}
+```
+
+**优化渲染性能**
+
+```javascript
+// 使用React.memo优化组件渲染
+const ExpensiveComponent = React.memo(function ExpensiveComponent(props) {
+  // 组件实现...
+  return <div>{/* 渲染逻辑 */}</div>;
+});
+
+// 虚拟列表实现
+import { FixedSizeList } from 'react-window';
+
+function VirtualizedList({ items }) {
+  const Row = ({ index, style }) => (
+    <div style={style}>
+      {items[index].text}
+    </div>
+  );
+  
+  return (
+    <FixedSizeList
+      height={500}
+      width={400}
+      itemCount={items.length}
+      itemSize={35}
+    >
+      {Row}
+    </FixedSizeList>
+  );
+}
+```
+
+**使用Web Workers处理密集计算**
+
+```javascript
+// main.js
+const worker = new Worker('worker.js');
+
+// 发送数据给Worker
+worker.postMessage({
+  action: 'process',
+  data: largeDataSet
+});
+
+// 接收Worker处理结果
+worker.onmessage = function(event) {
+  updateUI(event.data.result);
+};
+
+// worker.js
+self.addEventListener('message', (event) => {
+  if (event.data.action === 'process') {
+    // 在后台线程执行复杂计算
+    const result = complexCalculation(event.data.data);
+    
+    // 计算完成后发送结果回主线程
+    self.postMessage({ result });
+  }
+});
+```
+
+**优化DOM操作**
+
+```javascript
+// 优化前 - 频繁操作DOM
+function addItems(items) {
+  const container = document.getElementById('container');
+  
+  items.forEach(item => {
+    const element = document.createElement('div');
+    element.textContent = item.text;
+    container.appendChild(element);
+  });
+}
+
+// 优化后 - 使用DocumentFragment批量操作
+function addItemsOptimized(items) {
+  const container = document.getElementById('container');
+  const fragment = document.createDocumentFragment();
+  
+  items.forEach(item => {
+    const element = document.createElement('div');
+    element.textContent = item.text;
+    fragment.appendChild(element);
+  });
+  
+  container.appendChild(fragment);
+}
+```
+
+#### 16.2.3 综合优化策略
+
+**渐进式加载**
+
+```javascript
+// 关键内容优先加载，非关键内容延迟加载
+document.addEventListener('DOMContentLoaded', () => {
+  // 首先加载核心功能
+  loadCoreFeatures()
+    .then(() => {
+      // 页面可交互后，按优先级加载次要功能
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => loadSecondaryFeatures());
+      } else {
+        setTimeout(loadSecondaryFeatures, 1000);
+      }
+      
+      // 监测用户滚动，加载将要进入视口的内容
+      setupIntersectionObserver();
+    });
+});
+```
+
+**缓存策略**
+
+```javascript
+// 实现Service Worker缓存
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('ServiceWorker注册成功');
+      })
+      .catch(error => {
+        console.error('ServiceWorker注册失败:', error);
+      });
+  });
+}
+
+// sw.js
+const CACHE_NAME = 'app-cache-v1';
+const urlsToCache = [
+  '/',
+  '/styles/main.css',
+  '/scripts/main.js',
+  '/images/logo.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // 缓存命中，直接返回缓存资源
+        if (response) {
+          return response;
+        }
+        
+        // 缓存未命中，发起网络请求
+        return fetch(event.request).then(response => {
+          // 检查响应有效性
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          
+          // 克隆响应（因为响应流只能使用一次）
+          const responseToCache = response.clone();
+          
+          // 将响应存入缓存
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+            
+          return response;
+        });
+      })
+  );
+});
+```
+
+**性能监控与自动优化**
+
+```javascript
+// 实现性能自动修复系统
+class PerformanceAutoFix {
+  constructor() {
+    this.initMonitoring();
+    this.optimizationTechniques = {
+      'long-tasks': this.optimizeLongTasks,
+      'layout-thrashing': this.optimizeLayoutThrashing,
+      'resource-overload': this.optimizeResources
+    };
+  }
+  
+  initMonitoring() {
+    // 性能监控设置...
+  }
+  
+  detectPerformanceIssues() {
+    // 检测性能问题，返回所识别的问题类型
+    return this.analyzePerformance();
+  }
+  
+  applyFixes(issueTypes) {
+    issueTypes.forEach(issueType => {
+      if (this.optimizationTechniques[issueType]) {
+        this.optimizationTechniques[issueType]();
+      }
+    });
+  }
+  
+  optimizeLongTasks() {
+    // 实现任务拆分...
+  }
+  
+  optimizeLayoutThrashing() {
+    // 批处理DOM操作...
+  }
+  
+  optimizeResources() {
+    // 延迟加载非关键资源...
+  }
+}
+
+// 初始化自动优化系统
+const performanceFixer = new PerformanceAutoFix();
+setTimeout(() => {
+  const issues = performanceFixer.detectPerformanceIssues();
+  if (issues.length > 0) {
+    console.log('检测到性能问题:', issues);
+    performanceFixer.applyFixes(issues);
+  }
+}, 5000);
+```
+
+### 16.3 预防措施与最佳实践
+
+除了解决已经出现的问题，预防问题同样重要。以下是一些预防卡顿和白屏的最佳实践：
+
+1. **开发阶段性能检查**：将性能测试集成到开发流程中，在问题部署前识别它们
+2. **性能预算**：设定明确的性能指标阈值，超出时自动告警
+3. **渐进式增强**：确保基本功能在JavaScript加载失败时仍可用
+4. **关键资源内联**：内联首屏必要的CSS和JavaScript
+5. **构建优化**：使用Tree-shaking、代码分割和资源压缩
+6. **定期性能审计**：使用Lighthouse等工具定期审计应用性能
+7. **降级策略**：为复杂功能设计降级方案
+8. **用户体验设计**：使用加载指示器、骨架屏等减轻等待焦虑
+
+通过结合定位技术和解决策略，以及实施预防措施，可以有效应对页面卡顿和白屏问题，提供更加流畅的用户体验。性能优化是一个持续的过程，需要在开发、测试和生产环境中不断监控和改进。 
