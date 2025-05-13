@@ -171,3 +171,4 @@ app.post('/api/user/update', validateCSRFToken, (req, res) => {
     requestCode.innerHTML = requestExample;
   }
 });
+ 

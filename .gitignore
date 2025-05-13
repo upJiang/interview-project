@@ -8,3 +8,8 @@ renderOpt/node_modules
 fileUpload-demo/server/node_modules
 fileUpload-demo/client/node_modules
 fileUpload-demo/server/uploads
+缓存/browser-cache-demo/node_modules
+缓存/browser-cache-demo/server/node_modules
+缓存/browser-cache-demo/client/node_modules
+
+

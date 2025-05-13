@@ -250,3 +250,4 @@ if (window.self !== window.top) {
     }, 1000);
   }
 });
+ 

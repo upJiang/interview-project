@@ -14,3 +14,4 @@ console.log("允许的脚本已加载和执行");
     resultElement.style.color = "#2c7a30";
   }
 })();
+ 
