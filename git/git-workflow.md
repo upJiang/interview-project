@@ -1,239 +1,293 @@
 # Git 工作流
 
-## 工作流概念
+## 常见 Git 工作流
 
-Git工作流是团队使用Git进行协作开发的一套规范和流程，它定义了如何管理分支、提交和发布。
+Git 工作流是团队在使用 Git 进行协作开发时采用的一套流程和规范，可以提高团队协作效率和代码质量。
 
-```javascript
-function gitWorkflowConcept() {
-  // Git工作流的基本概念:
-  // - 一种组织和管理Git分支的方法和规范
-  // - 定义了创建、合并和删除分支的流程
-  // - 指导团队如何协作开发和发布软件
-  // - 可以根据项目和团队需求选择适合的工作流
-  
-  // 好的工作流应具备的特点:
-  // - 清晰明确的分支用途和规范
-  // - 便于团队成员理解和遵循
-  // - 支持多人并行开发
-  // - 保证主分支代码的稳定性
-  // - 支持持续集成和持续部署
-  // - 灵活应对不同开发和发布需求
-}
-```
+### Git 工作流的重要性
+- 规范团队协作流程，减少冲突和混乱
+- 保持代码库的清晰和稳定
+- 便于代码审查、测试和部署
+- 适应不同规模和类型的项目需求
 
-## Git Flow
+## 集中式工作流
 
-Git Flow是一种最流行的Git工作流模型，适用于有计划发布周期的项目。
+集中式工作流是最简单的一种Git工作流，类似于SVN的使用方式。
 
-```javascript
-function gitFlowWorkflow() {
-  // Git Flow的核心分支:
-  
-  // 1. master分支
-  // - 存放正式发布的版本
-  // - 每个提交都应该打上版本标签(tag)
-  // - 只能从release分支或hotfix分支合并
-  
-  // 2. develop分支
-  // - 主开发分支，包含最新的开发状态
-  // - 功能开发完成后合并到此分支
-  // - 当准备发布时，从此分支创建release分支
-  
-  // Git Flow的辅助分支:
-  
-  // 3. feature分支
-  // - 从develop分支创建
-  // - 用于开发新功能
-  // - 命名通常为feature/功能名称
-  // - 完成后合并回develop分支
-  
-  // 4. release分支
-  // - 从develop分支创建
-  // - 用于准备发布版本
-  // - 命名通常为release/版本号
-  // - 只允许修复缺陷，不引入新功能
-  // - 完成后同时合并到master和develop分支
-  
-  // 5. hotfix分支
-  // - 从master分支创建
-  // - 用于修复生产环境中的紧急问题
-  // - 命名通常为hotfix/版本号
-  // - 完成后同时合并到master和develop分支
-  
-  // Git Flow的基本流程:
-  // 1. 从develop分支创建feature分支进行功能开发
-  // 2. 完成功能后将feature分支合并回develop分支
-  // 3. 准备发布时从develop分支创建release分支
-  // 4. 在release分支上进行测试和缺陷修复
-  // 5. 发布准备就绪后，将release分支合并到master和develop
-  // 6. 若生产环境出现问题，从master创建hotfix分支
-  // 7. 修复完成后，将hotfix分支合并到master和develop
-}
-```
+### 集中式工作流特点
+- 团队使用单一的中央仓库和单一的主分支(通常是master)
+- 所有开发人员直接在master分支上进行开发
+- 适合小型团队和简单项目
+- 优点是简单易学，缺点是容易产生冲突
+
+### 集中式工作流步骤
+1. 克隆中央仓库到本地
+   ```
+   git clone <central-repository-url>
+   ```
+
+2. 进行本地开发和提交
+   ```
+   git add .
+   git commit -m "Description of changes"
+   ```
+
+3. 更新本地仓库
+   ```
+   git pull origin master
+   ```
+
+4. 解决可能的冲突后推送
+   ```
+   git push origin master
+   ```
+
+## 功能分支工作流
+
+功能分支工作流在集中式基础上，为每个新功能创建独立的分支进行开发。
+
+### 功能分支工作流特点
+- 主分支仅保存稳定代码
+- 每个新功能在专门的分支上开发
+- 通过Pull Request进行代码审查
+- 减少对主分支的干扰，便于多功能并行开发
+
+### 功能分支工作流步骤
+1. 从主分支创建新的功能分支
+   ```
+   git checkout master
+   git pull
+   git checkout -b feature/new-feature
+   ```
+
+2. 在功能分支上进行开发和提交
+   ```
+   git add .
+   git commit -m "Add new feature"
+   ```
+
+3. 推送功能分支到远程仓库
+   ```
+   git push origin feature/new-feature
+   ```
+
+4. 创建Pull Request请求合并到主分支
+   - 团队成员审查代码
+   - 讨论和修改(如有必要)
+
+5. 合并功能分支到主分支
+   ```
+   git checkout master
+   git merge feature/new-feature
+   git push origin master
+   ```
+
+6. 删除功能分支(可选)
+   ```
+   git branch -d feature/new-feature
+   git push origin --delete feature/new-feature
+   ```
+
+## Gitflow工作流
+
+Gitflow是一个更加严格和结构化的分支策略，为不同的开发阶段设计了专门的分支。
+
+### Gitflow工作流特点
+- 使用两个长期分支: master(生产环境)和develop(开发环境)
+- 三类临时分支: feature(功能), release(版本), hotfix(热修复)
+- 明确的分支合并路径和规则
+- 适合有计划发布周期的大型项目
+
+### 主要分支
+- **master**: 存储官方发布历史，只接受合并，不直接提交
+- **develop**: 集成所有功能的开发分支，作为下一个版本的预备分支
+
+### 支持分支
+- **feature/xxx**: 用于开发新功能，从develop分出，完成后合并回develop
+- **release/xxx**: 准备发布版本，从develop分出，完成后合并到master和develop
+- **hotfix/xxx**: 修复生产环境问题，从master分出，完成后合并到master和develop
+
+### Gitflow工作流步骤
+1. 初始化Gitflow(可使用git-flow扩展工具)
+   ```
+   git flow init
+   ```
+
+2. 开发新功能
+   ```
+   git flow feature start new-feature
+   # 开发工作...
+   git flow feature finish new-feature
+   ```
+
+3. 准备发布版本
+   ```
+   git flow release start 1.0.0
+   # 最后修改和测试...
+   git flow release finish 1.0.0
+   ```
+
+4. 修复生产环境问题
+   ```
+   git flow hotfix start bug-fix
+   # 修复工作...
+   git flow hotfix finish bug-fix
+   ```
 
 ## GitHub Flow
 
-GitHub Flow是一种简化的工作流，特别适合持续部署的项目。
+GitHub Flow是一个更简单的工作流，特别适合持续部署的Web项目。
 
-```javascript
-function githubFlowWorkflow() {
-  // GitHub Flow的核心理念:
-  // - 简单易用，易于理解
-  // - 支持持续部署
-  // - master分支始终可部署
-  
-  // GitHub Flow的分支策略:
-  // 1. master分支
-  // - 主分支，始终保持可部署状态
-  // - 是所有部署的源分支
-  
-  // 2. 功能分支
-  // - 从master分支创建
-  // - 用于开发新功能或修复问题
-  // - 名称应该具有描述性
-  
-  // GitHub Flow的基本流程:
-  // 1. 从master分支创建功能分支
-  // 2. 在功能分支上提交更改
-  // 3. 创建Pull Request请求合并到master
-  // 4. 代码审查和讨论
-  // 5. 部署分支进行测试(可选)
-  // 6. 合并到master分支
-  // 7. 立即部署master分支
-  
-  // GitHub Flow适用场景:
-  // - 小型团队和项目
-  // - 持续部署的Web应用
-  // - 需要快速迭代的项目
-}
-```
+### GitHub Flow特点
+- 只有一个长期分支master，始终保持可部署状态
+- 所有新开发基于master创建特性分支
+- 持续集成和频繁部署
+- 依赖Pull Request进行代码审查
+- 合并后立即部署
 
-## GitLab Flow
+### GitHub Flow步骤
+1. 从master创建分支
+   ```
+   git checkout master
+   git pull
+   git checkout -b new-feature
+   ```
 
-GitLab Flow结合了Git Flow和GitHub Flow的优点，增加了环境分支的概念。
+2. 进行开发和提交
+   ```
+   git add .
+   git commit -m "Implement new feature"
+   ```
 
-```javascript
-function gitlabFlowWorkflow() {
-  // GitLab Flow的核心理念:
-  // - 结合Git Flow和GitHub Flow的优点
-  // - 引入环境分支和环境标签
-  // - 适应不同的部署需求
-  
-  // GitLab Flow的分支策略:
-  
-  // 1. 基于环境的分支策略
-  // - master: 主开发分支
-  // - pre-production: 预生产环境分支
-  // - production: 生产环境分支
-  // - 代码从master流向production
-  
-  // 2. 基于发布的分支策略
-  // - master: 主开发分支
-  // - v1.0, v2.0: 版本分支
-  // - 使用标签标记生产就绪的提交
-  
-  // GitLab Flow的工作流程:
-  // 1. 从master分支创建功能分支
-  // 2. 功能完成后合并回master
-  // 3. 当需要部署时，将master合并到环境分支
-  // 4. 或者从master创建版本分支进行发布
-  
-  // GitLab Flow适用场景:
-  // - 需要支持多个环境的项目
-  // - 多版本并行维护的软件
-  // - 大型团队协作项目
-}
-```
+3. 推送分支到远程
+   ```
+   git push -u origin new-feature
+   ```
 
-## Trunk Based Development
+4. 开启Pull Request并讨论
+   - 代码审查
+   - 自动化测试
+   - 讨论修改
 
-主干开发(Trunk Based Development)是一种更激进的工作流，强调在主干分支上进行开发。
+5. 部署和测试
+   - 可以在合并前部署分支到测试环境
 
-```javascript
-function trunkBasedDevelopment() {
-  // 主干开发(TBD)的核心理念:
-  // - 所有开发者都在单一主干(通常是master)上工作
-  // - 使用短生命周期的功能分支或直接在主干上提交
-  // - 强调持续集成和自动化测试
-  // - 使用功能开关(Feature Flags)控制功能发布
-  
-  // 主干开发的分支策略:
-  // 1. 主干分支(master/main/trunk)
-  // - 所有开发工作的核心
-  // - 保持随时可部署的状态
-  
-  // 2. 短生命周期的功能分支
-  // - 从主干创建，生命周期通常不超过1-2天
-  // - 完成后立即合并回主干
-  
-  // 3. 发布分支(可选)
-  // - 从主干创建用于发布的快照
-  // - 只用于修复关键缺陷，不引入新功能
-  
-  // 主干开发的工作流程:
-  // 1. 直接在主干上提交小改动
-  // 2. 或创建短期功能分支进行开发
-  // 3. 频繁集成回主干(至少每天一次)
-  // 4. 使用自动化测试确保质量
-  // 5. 使用功能开关控制功能可见性
-  // 6. 必要时创建发布分支进行发布
-  
-  // 主干开发适用场景:
-  // - 高度自动化的CI/CD环境
-  // - 成熟的测试实践
-  // - 经验丰富的开发团队
-  // - 需要快速迭代的项目
-}
-```
+6. 合并到master
+   - 通过GitHub界面合并
+   - 自动部署到生产环境
 
-## 工作流选择
+7. 删除分支(可选)
+   ```
+   git branch -d new-feature
+   ```
 
-选择适合的Git工作流对于项目的成功至关重要，需要考虑多种因素。
+## Gitlab Flow
 
-```javascript
-function selectingGitWorkflow() {
-  // 工作流选择考虑因素:
-  
-  // 1. 团队规模和经验
-  // - 小团队可能适合简单工作流(如GitHub Flow)
-  // - 大团队可能需要更结构化的工作流(如Git Flow)
-  // - 新团队可能需要明确的规则和指导
-  
-  // 2. 项目类型和复杂度
-  // - 简单项目可以使用简单工作流
-  // - 复杂项目可能需要更严格的分支管理
-  
-  // 3. 发布周期和策略
-  // - 持续部署: GitHub Flow或主干开发
-  // - 计划发布: Git Flow或GitLab Flow
-  // - 多版本维护: GitLab Flow版本分支策略
-  
-  // 4. 质量控制需求
-  // - 高质量要求: 可能需要更结构化的工作流
-  // - 快速迭代优先: 可能选择更简单的工作流
-  
-  // 5. 部署环境
-  // - 单一环境: 简单工作流即可
-  // - 多环境: 考虑GitLab Flow等支持环境分支的工作流
-  
-  // 工作流对比:
-  // - Git Flow: 结构化强，适合计划发布的大型项目
-  // - GitHub Flow: 简单易用，适合持续部署的web项目
-  // - GitLab Flow: 灵活可调，适合多环境或多版本项目
-  // - 主干开发: 激进高效，适合CI/CD成熟的团队
-  
-  // 最佳实践: 根据需求调整工作流
-  // - 不必严格遵循某一种工作流
-  // - 可以结合多种工作流的优点
-  // - 随着项目发展逐步调整工作流
-}
-```
+Gitlab Flow结合了Gitflow和GitHub Flow的优点，更加注重环境和版本管理。
+
+### Gitlab Flow特点
+- 结合了基于功能分支的开发和基于环境的部署
+- 使用环境分支(如production, staging)管理部署
+- 可以有环境分支或版本分支两种变体
+- 清晰的升级路径，代码总是从不太稳定的环境向更稳定的环境流动
+
+### 环境分支模式
+1. 从master分支创建环境分支
+   ```
+   git checkout master
+   git checkout -b production
+   git checkout -b staging
+   ```
+
+2. 开发流程
+   - 在功能分支上开发
+   - 通过MR合并到master
+   - 定期从master合并到staging测试
+   - 测试无误后从staging合并到production发布
+
+### 版本分支模式
+- 适合需要维护多个版本的软件
+- 每个版本创建一个分支(如1-0-stable)
+- 修复后通过cherry-pick应用到各版本分支
+
+## 分布式工作流(Fork工作流)
+
+分布式工作流主要用于开源项目，允许任何人贡献代码，同时保持项目的完整性。
+
+### 分布式工作流特点
+- 每个开发者有两个远程仓库:官方(upstream)和个人fork(origin)
+- 开发者不直接提交到官方仓库，而是提交到个人fork
+- 贡献代码通过Pull Request提交
+- 项目维护者控制合并请求
+- 非常适合开源项目和松散协作
+
+### 分布式工作流步骤
+1. Fork官方仓库到个人账号
+
+2. 克隆个人fork到本地
+   ```
+   git clone <your-fork-url>
+   ```
+
+3. 添加官方仓库作为上游
+   ```
+   git remote add upstream <official-repo-url>
+   ```
+
+4. 创建功能分支
+   ```
+   git checkout -b new-feature
+   ```
+
+5. 开发和提交
+   ```
+   git add .
+   git commit -m "Add new feature"
+   ```
+
+6. 保持分支与官方最新代码同步
+   ```
+   git fetch upstream
+   git rebase upstream/master
+   ```
+
+7. 推送到个人fork
+   ```
+   git push origin new-feature
+   ```
+
+8. 创建Pull Request到官方仓库
+
+## 工作流选择指南
+
+不同的工作流适合不同的团队和项目，选择时应考虑多方面因素。
+
+### 项目规模
+- 小型项目: GitHub Flow或功能分支工作流
+- 中型项目: GitLab Flow
+- 大型项目: Gitflow或定制工作流
+
+### 团队结构
+- 紧密合作的小团队: GitHub Flow
+- 多团队协作: Gitflow或GitLab Flow
+- 开源社区: Fork工作流
+
+### 发布频率
+- 持续部署: GitHub Flow
+- 定期发布: Gitflow
+- 多版本维护: GitLab Flow(版本分支)
+
+### 最佳实践
+- 根据团队需求调整和简化工作流
+- 确保所有团队成员理解并遵循工作流程
+- 使用工具辅助(如git-flow扩展)
+- 配合CI/CD实现自动化测试和部署
+- 定期回顾和优化工作流程
 
 ## 常见面试题
 
-1. Git Flow中各个分支的作用是什么？
-2. GitHub Flow与Git Flow的主要区别是什么？
-3. 什么情况下应该选择主干开发(Trunk Based Development)？
-4. 如何在一个正在使用Git Flow的项目中处理紧急生产问题？
-5. 在多环境部署的项目中，GitLab Flow如何管理代码流转？ 
+1. 什么是Git工作流？为什么团队需要采用统一的工作流？
+2. 请描述Gitflow工作流的主要分支和工作方式。
+3. GitHub Flow和Gitflow有什么主要区别？各自适合什么样的项目？
+4. 在你参与的项目中，使用过什么样的Git工作流？有什么优缺点？
+5. 如何处理在功能分支开发过程中主分支已经有了新的更新？ 

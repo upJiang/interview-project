@@ -198,11 +198,6 @@
    wx.navigateTo({
      url: '/pages/detail/detail?id=123&type=product'
    });
-   
-   // 在目标页面的onLoad中接收
-   onLoad: function(options) {
-     console.log(options.id, options.type);
-   }
    ```
 
 2. **全局数据**：使用App实例的globalData
