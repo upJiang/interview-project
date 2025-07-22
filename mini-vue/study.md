@@ -65,6 +65,7 @@ function track(target, key) {
   if (!activeEffect) return;
   
   // 获取target对应的依赖图
+  
   let depsMap = targetMap.get(target);
   if (!depsMap) {
     targetMap.set(target, (depsMap = new Map()));
